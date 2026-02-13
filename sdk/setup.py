@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="t0ken-memoryx",
-    version="1.0.4",
+    version="1.0.5",
     description="MemoryX Python SDK - 让 AI Agents 轻松拥有持久记忆",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
