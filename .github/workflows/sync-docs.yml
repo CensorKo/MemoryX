@@ -11,53 +11,34 @@ jobs:
     steps:
       - name: Checkout MemoryX
         uses: actions/checkout@v4
+        with:
+          path: memoryx
       
       - name: Generate OpenAPI
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: |
-          cd api
-          pip install -r requirements.txt
+          cd memoryx/api
+          pip install -r requirements.txt -q
           python3 generate_openapi.py
           ls -la ../openapi.json
-          wc -c ../openapi.json
       
       - name: Checkout Docs
         uses: actions/checkout@v4
         with:
           repository: t0ken-ai/docs
-          path: docs-repo
+          path: docs
           token: ${{ secrets.AUTO_DOCS }}
       
-      - name: Push to Docs
+      - name: Sync Files
         run: |
-          echo "=== Current directory ==="
-          pwd
-          ls -la
+          cp memoryx/openapi.json docs/
+          ls -la docs/openapi.json
           
-          echo "=== openapi.json location ==="
-          find . -name "openapi.json" -type f 2>/dev/null
-          
-          echo "=== Copying to docs-repo ==="
-          cp -v openapi.json docs-repo/ || cp -v ./openapi.json docs-repo/
-          
-          echo "=== Verify in docs-repo ==="
-          ls -la docs-repo/openapi.json
-          wc -c docs-repo/openapi.json
-          
-          cd docs-repo
+          cd docs
           git config user.name "Claw Assistant"
           git config user.email "assistant@openclaw.ai"
-          
-          echo "=== Git operations ==="
           git add openapi.json
-          git status
-          
-          # Force commit by updating timestamp in file
-          echo "# Synced at $(date -u)" >> openapi.json
-          git add openapi.json
-          
-          git commit -m "sync: update openapi.json from MemoryX"
+          git commit -m "sync: update API docs"
           git push
-          echo "✅ Done"
