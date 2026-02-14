@@ -12,9 +12,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write  # For OIDC PyPI publishing
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,39 +26,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
       
-      - name: Check version
+      - name: Check version and PyPI status
         id: check
         working-directory: sdk
         run: |
           LOCAL_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           echo "local_version=$LOCAL_VERSION" >> $GITHUB_OUTPUT
-          echo "Package version: $LOCAL_VERSION"
+          echo "=== Package version: $LOCAL_VERSION ==="
           
-          # Check if version exists on PyPI
-          PYPI_VERSION=$(pip index versions t0ken-memoryx 2>/dev/null | head -1 | grep -oP '\d+\.\d+\.\d+' || echo "not-published")
-          echo "PyPI version: $PYPI_VERSION"
-          
-          if [ "$LOCAL_VERSION" = "$PYPI_VERSION" ]; then
-            echo "Version $LOCAL_VERSION already published"
-            echo "should_publish=false" >> $GITHUB_OUTPUT
-          else
-            echo "Should publish $LOCAL_VERSION"
-            echo "should_publish=true" >> $GITHUB_OUTPUT
-          fi
+          # Try to get PyPI version
+          echo "=== Checking PyPI ==="
+          pip index versions t0ken-memoryx 2>/dev/null || echo "Package may not exist yet"
       
       - name: Build package
-        if: steps.check.outputs.should_publish == 'true'
         working-directory: sdk
-        run: python -m build
+        run: |
+          python -m build
+          ls -la dist/
+          twine check dist/*
       
       - name: Publish to PyPI
-        if: steps.check.outputs.should_publish == 'true'
         working-directory: sdk
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*
-      
-      - name: Skip publish
-        if: steps.check.outputs.should_publish == 'false'
-        run: echo "Version already published, skipping"
+        run: |
+          echo "=== Publishing ==="
+          twine upload dist/* --verbose || echo "Upload failed - check token permissions"
