@@ -1,6 +1,6 @@
 """
-Memory Router - Direct implementation with MemoryService
-整合旧架构的核心记忆功能
+Memory Router - Hybrid implementation with Queue + Direct processing
+整合队列处理（Celery）和直接处理
 """
 from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks, Request
 from sqlalchemy.orm import Session
@@ -14,11 +14,17 @@ from app.core.database import get_db, User, APIKey, Project
 from app.core.security import verify_token
 from app.core.config import get_settings
 from app.services.memory_core.memory_service import MemoryService
-from typing import Optional
+
+# Import Celery tasks for queue processing
+from app.services.memory_tasks import (
+    process_memory,
+    update_memory_task,
+    search_memory as search_memory_task
+)
 
 router = APIRouter(prefix="/v1", tags=["memories"])
 
-# Global memory service instance
+# Global memory service instance for direct processing
 _memory_service: Optional[MemoryService] = None
 
 def get_memory_service() -> MemoryService:
@@ -61,6 +67,7 @@ class MemoryCreate(BaseModel):
     content: str
     project_id: Optional[str] = "default"
     metadata: Optional[dict] = {}
+    sync: Optional[bool] = False  # 是否同步处理（默认异步队列）
 
 class MemoryUpdate(BaseModel):
     content: Optional[str] = None
@@ -87,31 +94,51 @@ def get_current_user_api(x_api_key: str = Header(None), db: Session = Depends(ge
 @router.post("/memories", response_model=dict)
 async def create_memory(
     memory: MemoryCreate,
+    background_tasks: BackgroundTasks,
     user_data: tuple = Depends(get_current_user_api),
     db: Session = Depends(get_db)
 ):
-    """Create a new memory with AI classification."""
+    """Create a new memory with AI classification.
+    
+    - sync=false (默认): 使用队列异步处理，立即返回 task_id
+    - sync=true: 同步处理，等待完成返回结果
+    """
     user_id, api_key = user_data
     
-    service = get_memory_service()
-    
-    # Add user_id and project_id to metadata
-    metadata = memory.metadata or {}
-    metadata["user_id"] = str(user_id)
-    metadata["project_id"] = memory.project_id or "default"
-    
-    result = service.add(
-        memory.content,
-        user_id=str(user_id),
-        project_id=memory.project_id or "default",
-        metadata=metadata
-    )
-    
-    return {
-        "success": True,
-        "message": "Memory created successfully",
-        "data": result
+    memory_data = {
+        "user_id": str(user_id),
+        "content": memory.content,
+        "project_id": memory.project_id or "default",
+        "metadata": memory.metadata or {},
+        "created_at": datetime.utcnow().isoformat()
     }
+    
+    if memory.sync:
+        # 同步模式：直接处理（适合小数据、需要立即返回）
+        service = get_memory_service()
+        result = service.add(
+            memory.content,
+            user_id=str(user_id),
+            project_id=memory.project_id or "default",
+            metadata=memory_data["metadata"]
+        )
+        return {
+            "success": True,
+            "message": "Memory created successfully",
+            "data": result,
+            "mode": "sync"
+        }
+    else:
+        # 异步模式：使用 Celery 队列（默认，适合大数据、高并发）
+        task = process_memory.delay(memory_data, api_key)
+        return {
+            "success": True,
+            "message": "Memory queued for processing",
+            "task_id": task.id,
+            "status": "pending",
+            "mode": "async",
+            "note": "Use GET /api/v1/tasks/{task_id} to check status"
+        }
 
 @router.get("/memories", response_model=dict)
 async def list_memories(
@@ -166,15 +193,19 @@ async def get_memory(
 async def update_memory(
     memory_id: str,
     update: MemoryUpdate,
+    sync: bool = False,  # 是否同步处理
     user_data: tuple = Depends(get_current_user_api),
     db: Session = Depends(get_db)
 ):
-    """Update a memory."""
+    """Update a memory.
+    
+    - sync=false (默认): 使用队列异步处理
+    - sync=true: 同步处理
+    """
     user_id, api_key = user_data
     
-    service = get_memory_service()
-    
     # Check existing memory
+    service = get_memory_service()
     existing = service.get(memory_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -182,19 +213,36 @@ async def update_memory(
     if existing.get("user_id") != str(user_id):
         raise HTTPException(status_code=403, detail="Access denied")
     
-    updates = {}
+    update_data = {}
     if update.content is not None:
-        updates["content"] = update.content
+        update_data["content"] = update.content
     if update.metadata is not None:
-        updates["metadata"] = update.metadata
+        update_data["metadata"] = update.metadata
     
-    result = service.update(memory_id, updates)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
     
-    return {
-        "success": True,
-        "message": "Memory updated successfully",
-        "data": result
-    }
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    if sync:
+        # 同步模式
+        result = service.update(memory_id, update_data)
+        return {
+            "success": True,
+            "message": "Memory updated successfully",
+            "data": result,
+            "mode": "sync"
+        }
+    else:
+        # 异步模式
+        task = update_memory_task.delay(memory_id, update_data, api_key)
+        return {
+            "success": True,
+            "message": "Memory update queued for processing",
+            "task_id": task.id,
+            "status": "pending",
+            "mode": "async"
+        }
 
 @router.delete("/memories/{memory_id}", response_model=dict)
 async def delete_memory(
@@ -202,7 +250,7 @@ async def delete_memory(
     user_data: tuple = Depends(get_current_user_api),
     db: Session = Depends(get_db)
 ):
-    """Delete a memory."""
+    """Delete a memory (同步处理，因为删除通常很快)."""
     user_id, api_key = user_data
     
     service = get_memory_service()
@@ -225,26 +273,70 @@ async def delete_memory(
 @router.post("/memories/search", response_model=dict)
 async def search_memories(
     query: SearchQuery,
+    sync: bool = True,  # 搜索默认同步（用户需要立即看到结果）
     user_data: tuple = Depends(get_current_user_api),
     db: Session = Depends(get_db)
 ):
-    """Search memories using vector similarity + filters."""
+    """Search memories using vector similarity + filters.
+    
+    - sync=true (默认): 同步搜索，立即返回结果
+    - sync=false: 异步搜索，返回 task_id
+    """
     user_id, api_key = user_data
     
-    service = get_memory_service()
-    
-    filters = {"user_id": str(user_id)}
-    if query.project_id:
-        filters["project_id"] = query.project_id
-    
-    results = service.search(
-        query=query.query,
-        filters=filters,
-        limit=query.limit or 10
-    )
-    
-    return {
-        "success": True,
-        "data": results,
-        "query": query.query
+    search_data = {
+        "user_id": str(user_id),
+        "query": query.query,
+        "project_id": query.project_id,
+        "limit": query.limit or 10,
+        "filters": {"user_id": str(user_id)}
     }
+    
+    if query.project_id:
+        search_data["filters"]["project_id"] = query.project_id
+    
+    if sync:
+        # 同步模式：直接搜索
+        service = get_memory_service()
+        results = service.search(
+            query=query.query,
+            filters=search_data["filters"],
+            limit=query.limit or 10
+        )
+        return {
+            "success": True,
+            "data": results,
+            "query": query.query,
+            "mode": "sync"
+        }
+    else:
+        # 异步模式
+        task = search_memory_task.delay(search_data, api_key)
+        return {
+            "success": True,
+            "message": "Search queued",
+            "task_id": task.id,
+            "status": "pending",
+            "mode": "async"
+        }
+
+@router.get("/tasks/{task_id}", response_model=dict)
+async def get_task_status(task_id: str):
+    """Get Celery task status (for async operations)."""
+    from app.core.celery_config import celery_app
+    
+    task = celery_app.AsyncResult(task_id)
+    
+    response = {
+        "task_id": task_id,
+        "status": task.status,
+        "ready": task.ready()
+    }
+    
+    if task.ready():
+        if task.successful():
+            response["result"] = task.result
+        else:
+            response["error"] = str(task.result)
+    
+    return response
