@@ -6,12 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy.orm import Session
-from contextlib import asynccontextmanager
 import httpx
 import hashlib
 import os
-from typing import Optional
-
 from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from app.core.database import APIKey
@@ -26,32 +23,12 @@ settings = get_settings()
 
 Base.metadata.create_all(bind=engine)
 
-# Lifespan context manager for startup/shutdown
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan handler."""
-    # Startup
-    print("🚀 MemoryX API starting up...")
-    
-    # Initialize Qdrant connection (optional, will retry on demand)
-    try:
-        from app.services.memory_core.memory_service import MemoryService
-        print("✅ MemoryService module loaded")
-    except Exception as e:
-        print(f"⚠️ MemoryService initialization warning: {e}")
-    
-    yield
-    
-    # Shutdown
-    print("🛑 MemoryX API shutting down...")
-
 app = FastAPI(
     title=settings.app_name,
-    description="MemoryX - Cognitive Memory API with AI Classification",
+    description="MemoryX - Free Cognitive Memory API with Queue",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
-    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -92,7 +69,7 @@ async def landing_page():
     if os.path.exists(landing_html_path):
         with open(landing_html_path, "r", encoding="utf-8") as f:
             return f.read()
-    return HTMLResponse(content="<h1>MemoryX</h1><p>API Server Running</p>")
+    return HTMLResponse(content="<h1>MemoryX</h1><p>Coming soon...</p>")
 
 @app.get("/privacy.html", response_class=HTMLResponse)
 async def privacy_page():
@@ -128,15 +105,6 @@ async def my_machines_page():
 
 @app.get("/api/health")
 def health_check():
-    return {
-        "status": "healthy",
-        "service": "MemoryX",
-        "version": "1.0.0",
-        "features": [
-            "project_isolation",
-            "cognitive_classification",
-            "temporal_kg",
-            "composite_scoring",
-            "vector_search"
-        ]
-    }
+    return {"status": "healthy", "version": "1.0.0"}
+
+# sync test Sun Feb 15 00:45:38 CST 2026

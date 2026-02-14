@@ -2,26 +2,37 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
+# Copy requirements
 COPY api/requirements.txt .
 
-# 安装Python依赖
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码
+# Copy application code
 COPY api/app/ ./app/
 
-# 复制静态文件 (portal, landing, etc.)
+# Copy memory core services (from old architecture)
+COPY api/app/services/memory_core/ ./app/services/memory_core/
+
+# Copy static files
 COPY static/ /app/static/
 
-# 暴露端口
+# Create __init__.py for memory_core if not exists
+RUN touch /app/services/memory_core/__init__.py
+
+# Expose port
 EXPOSE 8000
 
-# 启动命令
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Start command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

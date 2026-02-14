@@ -1,93 +1,153 @@
-# MemoryX Python SDK
+# MemoryX
 
-让 AI Agents 轻松拥有持久记忆
+Cognitive Memory API with AI-powered classification and vector search.
 
-## 快速开始
+## Architecture
 
-```python
-from memoryx import connect_memory
+This project integrates the core AI capabilities from OpenMemoryX into a unified FastAPI architecture:
 
-# 自动注册并连接
-memory = connect_memory()
+### Core Components
 
-# 存储记忆
-memory.add("用户喜欢深色模式")
+- **FastAPI**: Modern, fast web framework for building APIs
+- **SQLAlchemy**: Database ORM for user/project management
+- **Celery + Redis**: Asynchronous task processing
+- **Qdrant**: Vector database for memory storage and semantic search
+- **Ollama**: Local LLM for memory classification and embeddings
 
-# 搜索记忆
-results = memory.search("用户偏好")
-```
+### Memory Core Features (from OpenMemoryX)
 
-## 功能特性
+Located in `api/app/services/memory_core/`:
 
-- 🔧 **自动注册** - Agent 自动注册，无需手动配置
-- 💾 **永久存储** - 记忆永久保存到向量数据库
-- 🔍 **智能搜索** - 基于语义的相似度搜索
-- 🏷️ **认知分类** - 自动分类为情景/语义/程序/情感/反思记忆
-- 🔒 **AES-256 加密** - 您的原始记忆内容使用 AES-256-GCM 加密存储
-- 🌐 **开源可审计** - 100% 开源代码，接受社区审计，确保没有后门
-- 🛡️ **隐私安全** - 机器隔离，验证码认领机制
+- **classification.py**: LLM-powered cognitive sector classification
+  - Episodic: Events, conversations, experiences
+  - Semantic: Facts, knowledge, user preferences
+  - Procedural: Steps, processes, how-to guides
+  - Emotional: Feelings, satisfaction, complaints
+  - Reflective: Insights, patterns, recommendations
 
-## 完整示例
+- **memory_service.py**: Core memory operations with hybrid approach
+  - Project-based organization
+  - Vector similarity search
+  - AES-256-GCM encryption
+  - Per-user Data Encryption Keys (DEK)
 
-```python
-from memoryx import connect_memory
+- **scoring.py**: Composite scoring algorithm for result ranking
 
-# 连接记忆系统
-memory = connect_memory()
+- **temporal_kg.py**: Temporal knowledge graph for time-based queries
 
-# 存储不同类型的记忆
-memory.add(
-    content="用户是Python开发者",
-    category="semantic"  # 语义记忆
-)
+## API Endpoints
 
-memory.add(
-    content="用户昨天去了北京",
-    category="episodic"  # 情景记忆
-)
+### Authentication
+- `POST /api/register` - User registration
+- `POST /api/login` - User login
+- `GET /api/me` - Get current user
 
-# 列出所有记忆
-memories = memory.list(limit=10)
+### API Keys
+- `GET /api/api_keys` - List API keys
+- `POST /api/api_keys` - Create API key
+- `DELETE /api/api_keys/{id}` - Delete API key
 
-# 搜索相关记忆
-results = memory.search("用户职业")
-for item in results["data"]["data"]:
-    print(f"- {item['content']}")
+### Memories
+- `POST /api/v1/memories` - Create memory (with AI classification)
+- `GET /api/v1/memories` - List memories
+- `GET /api/v1/memories/{id}` - Get memory by ID
+- `PUT /api/v1/memories/{id}` - Update memory
+- `DELETE /api/v1/memories/{id}` - Delete memory
+- `POST /api/v1/memories/search` - Vector similarity search
 
-# 删除记忆
-memory.delete("memory_id_here")
+### Projects
+- `GET /api/projects` - List projects
+- `POST /api/projects` - Create project
+- `GET /api/projects/{id}` - Get project
+- `PUT /api/projects/{id}` - Update project
+- `DELETE /api/projects/{id}` - Delete project
 
-# 获取认领验证码
-code = memory.get_claim_code()
-print(f"认领验证码: {code}")
-```
+### Agent Management
+- `POST /api/auto-register` - Auto-register agent
+- `GET /api/machine-stats` - Get machine statistics
+- `POST /api/initiate` - Initiate claim
+- `GET /api/status/{code}` - Check claim status
+- `POST /api/verify` - Verify claim
+- `POST /api/complete` - Complete claim
 
-## 安装
+### Health
+- `GET /api/health` - Health check
+
+## Environment Variables
 
 ```bash
-pip install memoryx
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/memoryx
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+SECRET_KEY=your-secret-key
+
+# Ollama (for AI classification)
+OLLAMA_BASE_URL=http://localhost:11434
+LLM_MODEL=gemma3-27b-q8
+EMBED_MODEL=bge-m3
+
+# Qdrant (vector store)
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+QDRANT_COLLECTION=mem0
+
+# Optional: Encryption
+MEMORYX_MASTER_KEY=your-32-byte-hex-key
 ```
 
-## 认领机器
+## Deployment
 
-Agent 注册后，访问 [t0ken.ai/agent-register](https://t0ken.ai/agent-register) 输入验证码认领这台机器。
+### Docker Build
 
-## 安全与开源
+```bash
+docker build -f Dockerfile.api -t memoryx-api:latest .
+```
 
-**🔒 AES-256 加密存储**
-- 您的原始记忆内容使用 AES-256-GCM 加密存储
-- 每个用户拥有独立的加密密钥
-- 服务端永不触碰明文，保障数据安全
+### Docker Run
 
-**🌐 100% 开源可审计**
-- 完整的开源代码：[github.com/t0ken-ai/MemoryX](https://github.com/t0ken-ai/MemoryX)
-- 接受社区审计，确保没有后门
-- 您可以查看、验证甚至改进我们的加密实现
-- 许可证：MIT
+```bash
+docker run -d \
+  --name memoryx-api \
+  -p 8000:8000 \
+  -e DATABASE_URL=postgresql://... \
+  -e REDIS_URL=redis://... \
+  -e QDRANT_HOST=localhost \
+  -e OLLAMA_BASE_URL=http://localhost:11434 \
+  memoryx-api:latest
+```
 
-## 文档
+## Development
 
-详细文档请访问: https://docs.t0ken.ai
-# Test sync - Sun Feb 15 00:06:27 CST 2026
-# Test sync - Sun Feb 15 00:06:47 CST 2026
-# deploy trigger Sun Feb 15 02:01:09 CST 2026
+### Local Setup
+
+```bash
+cd api
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+### Generate OpenAPI
+
+```bash
+cd api
+python generate_openapi.py
+```
+
+## Integration from OpenMemoryX
+
+This project consolidates the following from the original OpenMemoryX:
+- Complete memory management with AI classification
+- Vector search with Qdrant
+- Temporal knowledge graph
+- Composite scoring algorithm
+- Encryption support
+
+The old proxy-based architecture has been replaced with direct implementation.
+
+## License
+
+MIT

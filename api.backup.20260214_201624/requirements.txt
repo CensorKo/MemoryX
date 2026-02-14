@@ -1,0 +1,46 @@
+# FastAPI and Server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+email-validator>=2.1.0
+python-dotenv>=1.0.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.12.0
+
+# Cache and Queue
+redis>=5.0.0
+celery>=5.3.0
+
+# Vector Database
+qdrant-client>=1.6.0
+
+# HTTP Client
+httpx>=0.25.0
+requests>=2.31.0
+
+# Authentication and Security
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+cryptography>=41.0.0
+
+# Firebase
+firebase-admin>=6.2.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+tenacity>=8.2.0
+
+# Date/Time
+python-dateutil>=2.8.0
+
+# Background Tasks
+celery-redbeat>=2.1.0
+
+# Monitoring (optional)
+# prometheus-client>=0.19.0
