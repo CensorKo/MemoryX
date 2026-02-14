@@ -36,7 +36,7 @@ jobs:
           export REDIS_URL="redis://localhost:6379/0"
           export OLLAMA_HOST="http://localhost:11434"
           
-          python3 <> 'PYEOF'
+          python3 << 'PYEOF'
 import sys
 sys.path.insert(0, '.')
 
