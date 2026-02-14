@@ -1,0 +1,27 @@
+{
+  "name": "@memoryx/openclaw-realtime-plugin",
+  "version": "1.0.0",
+  "description": "MemoryX real-time memory capture and recall plugin for OpenClaw",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "keywords": ["openclaw", "memoryx", "memory", "plugin"],
+  "author": "MemoryX Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t0ken-ai/MemoryX.git",
+    "directory": "plugins/memoryx-realtime-plugin"
+  },
+  "openclaw": {
+    "extensions": ["./dist/index.js"]
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
