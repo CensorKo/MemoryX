@@ -40,5 +40,11 @@ jobs:
           git config user.name "Claw Assistant"
           git config user.email "assistant@openclaw.ai"
           git add openapi.json
-          git commit -m "sync: update API docs"
-          git push
+          
+          # Check if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "sync: update API docs"
+            git push
+          fi
