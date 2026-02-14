@@ -9,8 +9,11 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout MemoryX
+        uses: actions/checkout@v4
+      
+      - name: Generate OpenAPI
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: |
@@ -18,20 +21,43 @@ jobs:
           pip install -r requirements.txt
           python3 generate_openapi.py
           ls -la ../openapi.json
-      - uses: actions/checkout@v4
+          wc -c ../openapi.json
+      
+      - name: Checkout Docs
+        uses: actions/checkout@v4
         with:
           repository: t0ken-ai/docs
-          path: docs
+          path: docs-repo
           token: ${{ secrets.AUTO_DOCS }}
-      - run: |
+      
+      - name: Push to Docs
+        run: |
+          echo "=== Current directory ==="
+          pwd
           ls -la
-          echo "Copying openapi.json..."
-          cp -v /home/runner/work/MemoryX/MemoryX/openapi.json docs/ 2>/dev/null || cp -v ./openapi.json docs/
-          ls -la docs/openapi.json
-          cd docs
+          
+          echo "=== openapi.json location ==="
+          find . -name "openapi.json" -type f 2>/dev/null
+          
+          echo "=== Copying to docs-repo ==="
+          cp -v openapi.json docs-repo/ || cp -v ./openapi.json docs-repo/
+          
+          echo "=== Verify in docs-repo ==="
+          ls -la docs-repo/openapi.json
+          wc -c docs-repo/openapi.json
+          
+          cd docs-repo
           git config user.name "Claw Assistant"
           git config user.email "assistant@openclaw.ai"
+          
+          echo "=== Git operations ==="
           git add openapi.json
           git status
-          git commit -m "update" || echo "No changes"
+          
+          # Force commit by updating timestamp in file
+          echo "# Synced at $(date -u)" >> openapi.json
+          git add openapi.json
+          
+          git commit -m "sync: update openapi.json from MemoryX"
           git push
+          echo "✅ Done"
