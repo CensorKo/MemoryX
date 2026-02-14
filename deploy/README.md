@@ -1,119 +1,67 @@
-# MemoryX 服务器部署指南
+# MemoryX 部署文档
 
-## 服务器清单
+⚠️ **注意：敏感配置文件已移至私有仓库**
 
-- **31.65 (Production)** - 生产环境
-- **31.66 (Test)** - 测试环境
+包含以下敏感信息的文件已移至 `t0ken-ai/AgentsOnly` 私有仓库：
+- 公网 Nginx 配置（含内网 IP）
+- 环境变量（含密码）
+- 服务器清单
 
-## 准备工作
+## 公开仓库中的通用配置
 
-### 1. 创建用户和目录
+本目录包含可以公开的通用部署配置：
 
-```bash
-# 创建用户
-sudo useradd -r -s /bin/false memoryx
+### Nginx
+- `nginx/memoryx-internal.conf` - 内网服务器 Nginx 配置（无敏感信息）
 
-# 创建目录
-sudo mkdir -p /data/memoryx/{api,static,backups,deploy/scripts}
-sudo mkdir -p /var/log/memoryx
-sudo chown -R memoryx:memoryx /data/memoryx /var/log/memoryx
+### 脚本
+- `scripts/deploy-safe.sh` - 安全部署脚本
+- `scripts/deploy-docker.sh` - Docker 部署脚本
+- `scripts/webhook_server.py` - Webhook 接收器
 
-# 克隆代码
-sudo -u memoryx git clone https://github.com/t0ken-ai/MemoryX.git /data/memoryx/repo
+### Systemd
+- `systemd/memoryx-api-docker.service` - API 容器服务
+- `systemd/memoryx-webhook.service` - Webhook 服务
+
+## 私有仓库中的敏感配置
+
+在 `t0ken-ai/AgentsOnly` 私有仓库中：
+
+```
+AgentsOnly/
+├── nginx/
+│   └── t0ken-public.conf      # 公网 Nginx（含内网 IP）
+├── environments/
+│   ├── production.env         # 31.65 环境变量
+│   └── test.env               # 31.66 环境变量
+├── inventory/
+│   └── hosts.ini              # 服务器清单
+└── scripts/
+    ├── deploy.sh              # 部署脚本
+    └── init-server.sh         # 初始化脚本
 ```
 
-### 2. 安装依赖
+## 快速开始
 
-```bash
-# Python 依赖
-cd /data/memoryx/repo/api
-pip install -r requirements.txt
+1. 访问私有仓库获取完整部署指南：
+   ```
+   https://github.com/t0ken-ai/AgentsOnly
+   ```
 
-# 复制部署脚本
-sudo cp /data/memoryx/repo/deploy/scripts/*.sh /data/memoryx/deploy/scripts/
-sudo cp /data/memoryx/repo/deploy/scripts/*.py /data/memoryx/deploy/scripts/
-sudo chmod +x /data/memoryx/deploy/scripts/*.sh
+2. 按照 `AgentsOnly/README.md` 进行服务器初始化
+
+3. 使用 `deploy-safe.sh` 进行应用更新
+
+## 部署架构
+
+```
+公网用户 ──▶ 公网 Nginx (AgentsOnly)
+              ├── SSL 终止
+              ├── GitHub IP 白名单 (/deploy)
+              └── 路由到内网
+                    ├──▶ 31.65 (生产)
+                    └──▶ 31.66 (测试)
 ```
 
-### 3. 配置 Nginx
-
-```bash
-# 复制配置文件
-sudo cp /data/memoryx/repo/deploy/nginx/memoryx.conf /etc/nginx/sites-available/memoryx
-sudo ln -s /etc/nginx/sites-available/memoryx /etc/nginx/sites-enabled/
-
-# 检查配置
-sudo nginx -t
-
-# 重载
-sudo systemctl reload nginx
-```
-
-### 4. 配置 Systemd 服务
-
-```bash
-# 复制服务文件
-sudo cp /data/memoryx/repo/deploy/systemd/*.service /etc/systemd/system/
-
-# 设置环境变量
-sudo vim /etc/memoryx/api.env
-# 添加:
-# DATABASE_URL=postgresql://memoryx:password@localhost:5432/memoryx
-# SECRET_KEY=your-secret-key
-# REDIS_URL=redis://localhost:6379/0
-# OLLAMA_HOST=http://192.168.31.65:11434
-
-# 更新 webhook token
-sudo vim /etc/systemd/system/memoryx-webhook.service
-# 修改 DEPLOY_TOKEN=your-actual-token
-
-# 重载并启用
-sudo systemctl daemon-reload
-sudo systemctl enable memoryx-api memoryx-webhook
-sudo systemctl start memoryx-api memoryx-webhook
-```
-
-### 5. 配置防火墙
-
-```bash
-# 允许 HTTP/HTTPS
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# 允许内部 API 端口（仅本地访问）
-sudo ufw allow from 127.0.0.1 to any port 8000
-sudo ufw allow from 127.0.0.1 to any port 9000
-```
-
-## 检查服务状态
-
-```bash
-# 检查所有服务
-sudo systemctl status memoryx-api
-sudo systemctl status memoryx-webhook
-sudo systemctl status nginx
-
-# 查看日志
-sudo journalctl -u memoryx-api -f
-sudo tail -f /var/log/memoryx/webhook.log
-```
-
-## 手动部署
-
-```bash
-# 切换到 memoryx 用户
-sudo -u memoryx -i
-
-# 执行部署脚本
-/data/memoryx/deploy/scripts/deploy.sh release  # 生产环境
-/data/memoryx/deploy/scripts/deploy.sh alpha    # 测试环境
-```
-
-## 更新配置
-
-修改配置文件后：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart memoryx-api memoryx-webhook
-```
+---
+*更多详情见私有仓库文档*
