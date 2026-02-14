@@ -90,3 +90,4 @@ Agent 注册后，访问 [t0ken.ai/agent-register](https://t0ken.ai/agent-regist
 详细文档请访问: https://docs.t0ken.ai
 # Test sync - Sun Feb 15 00:06:27 CST 2026
 # Test sync - Sun Feb 15 00:06:47 CST 2026
+# deploy trigger Sun Feb 15 02:01:09 CST 2026
