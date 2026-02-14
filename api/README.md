@@ -43,3 +43,5 @@ OLLAMA_HOST=http://host:11434
 docker build -f Dockerfile.api -t memoryx-api .
 docker run -p 8000:8000 memoryx-api
 ```
+
+Last updated: Sun Feb 15 00:15:42 CST 2026
