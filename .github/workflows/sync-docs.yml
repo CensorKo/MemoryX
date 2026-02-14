@@ -23,9 +23,10 @@ jobs:
       - name: Install dependencies
         run: |
           cd api
-          pip install -r requirements.txt
+          pip install -r requirements.txt 2>&1 | tail -20
 
       - name: Generate OpenAPI spec
+        id: generate
         run: |
           cd api
           export DATABASE_URL="sqlite:///./test.db"
@@ -43,11 +44,22 @@ with open('../openapi.json', 'w') as f:
     json.dump(openapi, f, indent=2)
 print(f"Generated openapi.json with {len(openapi.get('paths', {}))} paths")
 EOF
+          
+          echo "openapi_size=$(wc -c < ../openapi.json)" >> $GITHUB_OUTPUT
 
       - name: Verify OpenAPI
         run: |
+          echo "=== openapi.json ==="
           ls -la openapi.json
-          wc -c openapi.json
+          SIZE=$(wc -c < openapi.json)
+          echo "Size: $SIZE bytes"
+          if [ $SIZE -lt 1000 ]; then
+            echo "❌ File too small!"
+            cat openapi.json
+            exit 1
+          fi
+          echo "✅ File looks good"
+          head -50 openapi.json
 
       - name: Checkout Docs
         uses: actions/checkout@v4
@@ -55,14 +67,39 @@ EOF
           repository: t0ken-ai/docs
           path: docs-repo
           token: ${{ secrets.AUTO_DOCS }}
+          fetch-depth: 0
 
       - name: Sync to Docs
         run: |
-          cp openapi.json docs-repo/
+          echo "=== Copying file ==="
+          cp -v openapi.json docs-repo/
+          
           cd docs-repo
+          echo "=== Current directory ==="
+          pwd
+          ls -la
+          
+          echo "=== Git config ==="
           git config user.name "Claw Assistant"
           git config user.email "assistant@openclaw.ai"
+          
+          echo "=== Adding file ==="
           git add -A
+          
+          echo "=== Git status ==="
           git status
-          git commit -m "sync: update API docs from MemoryX" || echo "Nothing to commit"
-          git push origin main || echo "Push failed"
+          
+          echo "=== Checking for changes ==="
+          if git diff --cached --quiet; then
+            echo "⚠️ No changes detected, forcing update..."
+            # Force update by touching the file
+            touch openapi.json
+            git add -A
+          fi
+          
+          echo "=== Committing ==="
+          git commit -m "sync: update API docs from MemoryX ($(date -u +%Y-%m-%d_%H:%M:%S))" || echo "Commit skipped"
+          
+          echo "=== Pushing ==="
+          git push https://x-access-token:${{ secrets.AUTO_DOCS }}@github.com/t0ken-ai/docs.git main
+          echo "✅ Push completed"
