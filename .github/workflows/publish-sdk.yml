@@ -49,7 +49,7 @@ jobs:
         working-directory: sdk
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           echo "=== Publishing ==="
           twine upload dist/* --verbose || echo "Upload failed - check token permissions"
