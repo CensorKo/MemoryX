@@ -1,0 +1,103 @@
+name: Deploy via Webhook
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - 'static/**'
+      - 'api/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - alpha
+
+jobs:
+  deploy-release:
+    name: Deploy to Production (31.65)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'release')
+    steps:
+      - name: Trigger Production Webhook
+        run: |
+          echo "🚀 Triggering production deployment (31.65)..."
+          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_TOKEN }}&tupe=release" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "release",
+              "repository": "${{ github.repository }}",
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "release": {
+                "tag_name": "${{ github.event.release.tag_name || 'manual' }}",
+                "name": "${{ github.event.release.name || 'Manual Deploy' }}"
+              }
+            }' \
+            -w "\nHTTP Status: %{http_code}\n" \
+            -o /dev/null \
+            -s
+          echo "✅ Production webhook triggered"
+
+  deploy-alpha:
+    name: Deploy to Test (31.66)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')
+    steps:
+      - name: Trigger Test Webhook
+        run: |
+          echo "🧪 Triggering test deployment (31.66)..."
+          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_TOKEN }}&tupe=alpha" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "push",
+              "repository": "${{ github.repository }}",
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "commit_message": "${{ github.event.head_commit.message || 'Manual Deploy' }}"
+            }' \
+            -w "\nHTTP Status: %{http_code}\n" \
+            -o /dev/null \
+            -s
+          echo "✅ Test webhook triggered"
+
+  # 打包静态文件供 webhook 脚本下载
+  upload-artifact:
+    name: Upload Static Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Package static files
+        run: |
+          mkdir -p deploy
+          cp -r static/* deploy/ 2>/dev/null || echo "No static files"
+          cp -r api/app/ deploy/api/ 2>/dev/null || echo "No API files"
+          tar -czf deploy-package-${{ github.sha }}.tar.gz -C deploy .
+          ls -la deploy-package-*.tar.gz
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-package
+          path: deploy-package-*.tar.gz
+          retention-days: 7
+      
+      - name: Create download URL
+        run: |
+          echo ""
+          echo "========================================="
+          echo "📦 Deployment package created"
+          echo "========================================="
+          echo ""
+          echo "SHA: ${{ github.sha }}"
+          echo "Download: https://github.com/t0ken-ai/MemoryX/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "Webhook payload includes SHA for download"
