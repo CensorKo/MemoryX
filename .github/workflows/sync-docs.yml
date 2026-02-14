@@ -25,8 +25,6 @@ jobs:
           cd api
           pip install --upgrade pip
           pip install -r requirements.txt
-          echo "=== Installed packages ==="
-          pip list | grep -E "fastapi|pydantic|sqlalchemy|celery|redis"
 
       - name: Generate OpenAPI spec
         run: |
@@ -40,43 +38,40 @@ jobs:
 import sys
 sys.path.insert(0, '.')
 
-print("=== Python Path ===")
-print(sys.path)
-
 print("=== Importing app ===")
-try:
-    from app.main import app
-    print("✅ Import successful")
-except Exception as e:
-    print(f"❌ Import failed: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+from app.main import app
+print("✅ Import successful")
 
 print("=== Generating OpenAPI ===")
-try:
-    import json
-    openapi = app.openapi()
-    path_count = len(openapi.get('paths', {}))
-    print(f"✅ Generated OpenAPI with {path_count} paths")
-    
-    with open('../openapi.json', 'w', encoding='utf-8') as f:
-        json.dump(openapi, f, indent=2, ensure_ascii=False)
-    
-    import os
-    size = os.path.getsize('../openapi.json')
-    print(f"✅ File size: {size} bytes")
-    
-    if size < 1000:
-        print("❌ File too small, failing")
-        sys.exit(1)
-        
-except Exception as e:
-    print(f"❌ Generation failed: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+import json
+openapi = app.openapi()
+path_count = len(openapi.get('paths', {}))
+print(f"✅ Generated OpenAPI with {path_count} paths")
+
+with open('../openapi.json', 'w', encoding='utf-8') as f:
+    json.dump(openapi, f, indent=2, ensure_ascii=False)
+print("✅ Saved to ../openapi.json")
 PYEOF
+
+      - name: Verify OpenAPI file
+        run: |
+          echo "=== Checking openapi.json ==="
+          ls -la openapi.json || echo "❌ File not found in root"
+          if [ -f "openapi.json" ]; then
+            size=$(stat -c%s openapi.json 2>/dev/null || stat -f%z openapi.json)
+            echo "File size: $size bytes"
+            if [ $size -lt 1000 ]; then
+              echo "❌ File too small"
+              cat openapi.json
+              exit 1
+            fi
+            echo "✅ File looks good"
+            head -30 openapi.json
+          else
+            echo "❌ openapi.json not found"
+            ls -la
+            exit 1
+          fi
 
       - name: Checkout Docs Repository
         uses: actions/checkout@v4
@@ -87,12 +82,27 @@ PYEOF
 
       - name: Sync OpenAPI to Docs
         run: |
-          ls -la openapi.json
-          wc -l openapi.json
-          head -20 openapi.json
-          cp openapi.json docs-repo/
+          echo "=== Copying to docs repo ==="
+          cp -v openapi.json docs-repo/
+          ls -la docs-repo/openapi.json
+          
           cd docs-repo
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          
+          echo "=== Git status ==="
+          git status
+          
           git add openapi.json
-          git diff --staged --quiet || (git commit -m "auto: sync API docs from MemoryX" && git push)
+          
+          echo "=== Git diff ==="
+          git diff --staged --stat || echo "No changes"
+          
+          if git diff --staged --quiet; then
+            echo "⚠️ No changes to commit"
+          else
+            echo "✅ Committing changes"
+            git commit -m "auto: sync API docs from MemoryX"
+            git push
+            echo "✅ Pushed to docs repo"
+          fi
