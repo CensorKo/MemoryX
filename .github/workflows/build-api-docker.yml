@@ -13,8 +13,8 @@ on:
 env:
   # Docker Hub (公开镜像)
   DOCKERHUB_REPO: t0kenai/memoryx-api
-  # GitHub Container Registry (备用)
-  GHCR_REPO: ghcr.io/${{ github.repository }}-api
+  # GitHub Container Registry (备用) - 必须小写
+  GHCR_REPO: ghcr.io/t0ken-ai/memoryx-api
 
 jobs:
   build:
