@@ -1,0 +1,90 @@
+# Pre-import email_validator to fix pydantic issue
+import email_validator
+
+from fastapi import FastAPI, Depends, HTTPException, Header, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
+from sqlalchemy.orm import Session
+import httpx
+import hashlib
+import os
+from app.core.config import get_settings
+from app.core.database import engine, Base, get_db
+from app.models.project import Project
+from app.core.database import APIKey
+from app.routers import auth, api_keys, memories, projects, stats
+from app.core.celery_config import celery_app
+
+settings = get_settings()
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title=settings.app_name,
+    description="MemoryX - Free Cognitive Memory API with Queue",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include all routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(api_keys.router, prefix="/api")
+app.include_router(memories.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
+app.include_router(stats.router, prefix="/api")
+
+# Mount static files
+app.mount("/portal", StaticFiles(directory="/app/static/portal", html=True), name="portal")
+app.mount("/docs", StaticFiles(directory="/app/static", html=True), name="docs")
+app.mount("/admin", StaticFiles(directory="/app/static/admin", html=True), name="admin")
+app.mount("/doc", StaticFiles(directory="/app/static/doc", html=True), name="doc")
+app.mount("/admin", StaticFiles(directory="/app/static/admin", html=True), name="admin")
+
+@app.get("/", response_class=HTMLResponse)
+async def landing_page():
+    landing_html_path = "/app/static/openmemoryx-landing.html"
+    if os.path.exists(landing_html_path):
+        with open(landing_html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return HTMLResponse(content="<h1>MemoryX</h1><p>Coming soon...</p>")
+
+@app.get("/portal", response_class=HTMLResponse)
+async def portal_redirect():
+    """Redirect to portal"""
+    portal_path = "/app/static/portal/index.html"
+    if os.path.exists(portal_path):
+        with open(portal_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return HTMLResponse(content="<h1>Portal</h1><p>Coming soon...</p>")
+
+@app.get("/api/health")
+def health_check():
+    inspect = celery_app.control.inspect()
+    stats = inspect.stats() if inspect else None
+    
+    return {
+        "status": "ok",
+        "service": "openmemoryx-api",
+        "queue": {
+            "broker": "connected" if stats else "unknown",
+            "workers": len(stats) if stats else 0
+        }
+    }
+
+@app.get("/health")
+def root_health():
+    return {"status": "ok", "service": "openmemoryx"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)

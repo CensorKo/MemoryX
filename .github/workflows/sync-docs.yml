@@ -1,20 +1,18 @@
-name: Sync API Docs
+name: Sync API Docs to t0ken-ai/docs
 
 on:
   push:
     branches: [main]
-    # SDK 代码变更时触发文档更新
     paths:
-      - 'sdk/**/*.py'
-      - 'memoryx/**/*.py'
-      - '**.md'
+      - 'api/**'
+      - 'sdk/**'
   workflow_dispatch:
 
 jobs:
   sync-docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout MemoryX API
+      - name: Checkout MemoryX
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -22,8 +20,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate OpenAPI
+      - name: Install dependencies
         run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Generate OpenAPI spec
+        run: |
+          cd api
           python3 -c "
 import sys
 sys.path.insert(0, '.')
@@ -34,9 +38,9 @@ os.environ['REDIS_URL'] = 'redis://localhost:6379'
 from app.main import app
 import json
 openapi = app.openapi()
-json.dump(openapi, open('openapi.json', 'w'), indent=2, ensure_ascii=False)
+json.dump(openapi, open('../openapi.json', 'w'), indent=2, ensure_ascii=False)
 print('Generated openapi.json')
-" || echo '{"openapi":"3.0.0","info":{"title":"MemoryX API","version":"1.0.0"}}' > openapi.json
+" || echo '{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"MemoryX API\",\"version\":\"1.0.0\"}}' > ../openapi.json
 
       - name: Checkout Docs Repository
         uses: actions/checkout@v4
@@ -52,4 +56,4 @@ print('Generated openapi.json')
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add openapi.json
-          git diff --staged --quiet || (git commit -m "auto: sync API docs from memoryx-api" && git push)
+          git diff --staged --quiet || (git commit -m "auto: sync API docs from MemoryX" && git push)
