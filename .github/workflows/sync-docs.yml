@@ -12,24 +12,20 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout MemoryX
+        uses: actions/checkout@v4
       
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
-      - name: Install
+      - name: Generate OpenAPI
         run: |
           cd api
           pip install -r requirements.txt
-      
-      - name: Generate
-        run: |
-          cd api
           export DATABASE_URL="sqlite:///./test.db"
           export SECRET_KEY="test"
-          export REDIS_URL="redis://localhost:6379/0"
-          export OLLAMA_HOST="http://localhost:11434"
           python3 -c "
 import sys
 sys.path.insert(0, '.')
@@ -39,20 +35,20 @@ with open('../openapi.json', 'w') as f:
     json.dump(app.openapi(), f, indent=2)
 "
           ls -la ../openapi.json
-          wc -c ../openapi.json
       
-      - uses: actions/checkout@v4
+      - name: Checkout Docs
+        uses: actions/checkout@v4
         with:
           repository: t0ken-ai/docs
           path: docs
           token: ${{ secrets.AUTO_DOCS }}
       
-      - name: Push
+      - name: Push to Docs
         run: |
           cp openapi.json docs/
           cd docs
           git config user.name "Claw Assistant"
           git config user.email "assistant@openclaw.ai"
-          git add .
-          git commit -m "update openapi.json" || true
+          git add openapi.json
+          git diff --cached --quiet || git commit -m "update openapi.json"
           git push
