@@ -2,33 +2,65 @@ name: Publish Plugin to NPM
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'plugins/memoryx-realtime-plugin/**'
     tags:
       - 'plugin-v*'
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-          
+          scope: '@t0ken.ai'
+      
       - name: Install dependencies
-        run: |
-          cd plugins/memoryx-realtime-plugin
-          npm ci
-          
+        working-directory: plugins/memoryx-realtime-plugin
+        run: npm ci
+      
       - name: Build
+        working-directory: plugins/memoryx-realtime-plugin
+        run: npm run build
+      
+      - name: Check package version
+        id: check
+        working-directory: plugins/memoryx-realtime-plugin
         run: |
-          cd plugins/memoryx-realtime-plugin
-          npm run build
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          echo "local_version=$LOCAL_VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $LOCAL_VERSION"
           
+          # Check if version exists on npm
+          NPM_VERSION=$(npm view @t0ken.ai/memoryx-openclaw-plugin version 2>/dev/null || echo "not-published")
+          echo "NPM version: $NPM_VERSION"
+          
+          if [ "$LOCAL_VERSION" = "$NPM_VERSION" ]; then
+            echo "Version $LOCAL_VERSION already published"
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "Should publish $LOCAL_VERSION"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Publish to NPM
-        run: |
-          cd plugins/memoryx-realtime-plugin
-          npm publish --access public
+        if: steps.check.outputs.should_publish == 'true'
+        working-directory: plugins/memoryx-realtime-plugin
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Skip publish
+        if: steps.check.outputs.should_publish == 'false'
+        run: echo "Version already published, skipping"
