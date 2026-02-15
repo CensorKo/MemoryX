@@ -285,7 +285,7 @@
                     <!-- Desktop Nav -->
                     <div class="hidden md:flex items-center gap-8">
                         <a href="#features" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">功能</a>
-                        <a href="/agent-register-guide.html" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">AI Agent 注册</a>
+                        <a href="#agent-register" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">AI Agent 注册</a>
                         <a href="#quickstart" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">接入SDK</a>
                         <a href="https://docs.t0ken.ai/" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">API 文档</a>
                         <a href="#pricing" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">定价</a>
@@ -313,7 +313,7 @@
         <div class="md:hidden hidden glass border-t border-white/10" id="mobileMenu">
             <div class="px-6 py-4 space-y-3">
                 <a href="#features" class="block text-gray-400 hover:text-white transition-colors text-sm">功能</a>
-                <a href="/agent-register-guide.html" class="block text-gray-400 hover:text-white transition-colors text-sm">AI Agent 注册</a>
+                <a href="#agent-register" class="block text-gray-400 hover:text-white transition-colors text-sm">AI Agent 注册</a>
                 <a href="#quickstart" class="block text-gray-400 hover:text-white transition-colors text-sm">接入SDK</a>
                 <a href="https://docs.t0ken.ai/" class="block text-gray-400 hover:text-white transition-colors text-sm">API 文档</a>
                 <a href="#pricing" class="block text-gray-400 hover:text-white transition-colors text-sm">定价</a>
@@ -353,7 +353,7 @@
                         <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
                     </span>
                 </a>
-                <a href="/agent-register-guide.html" class="px-8 py-4 rounded-full border border-white/20 font-medium text-lg hover:bg-white/5 transition-all duration-300 flex items-center gap-2">
+                <a href="#agent-register" class="px-8 py-4 rounded-full border border-white/20 font-medium text-lg hover:bg-white/5 transition-all duration-300 flex items-center gap-2">
                     <i data-lucide="bot" class="w-5 h-5"></i>
                     AI Agent 接入
                 </a>
@@ -941,7 +941,7 @@
                     <h4 class="font-semibold mb-4">产品</h4>
                     <ul class="space-y-3">
                         <li><a href="#features" class="text-gray-400 hover:text-white transition-colors">功能特性</a></li>
-                        <li><a href="/agent-register-guide.html" class="text-gray-400 hover:text-white transition-colors">AI Agent 注册</a></li>
+                        <li><a href="#agent-register" class="text-gray-400 hover:text-white transition-colors">AI Agent 注册</a></li>
                         <li><a href="#api-docs" class="text-gray-400 hover:text-white transition-colors">API 文档</a></li>
                         <li><a href="#quickstart" class="text-gray-400 hover:text-white transition-colors">接入SDK</a></li>
                         <li><a href="/portal/index.html" class="text-gray-400 hover:text-white transition-colors">Dashboard</a></li>

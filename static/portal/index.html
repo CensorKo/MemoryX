@@ -1,664 +1,871 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenMemoryX Portal</title>
+    <title>MemoryX - Magic Link Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            300: '#93c5fd',
-                            400: '#60a5fa',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                            900: '#1e3a8a',
-                        },
-                        dark: {
-                            bg: '#0f172a',
-                            card: '#1e293b',
-                            border: '#334155',
-                            text: '#f1f5f9',
-                            muted: '#94a3b8'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); }
-        .sidebar-item { transition: all 0.2s ease; }
-        .sidebar-item:hover { background: rgba(59, 130, 246, 0.1); }
-        .sidebar-item.active { background: rgba(59, 130, 246, 0.2); border-right: 3px solid #3b82f6; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-        .btn-primary:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
-        .fade-in { animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .loading { border: 2px solid #334155; border-top: 2px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body{font-family:'Inter',sans-serif;background:#0a0a0f}
+    .fade-in{animation:fadeIn 0.3s ease-in}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     </style>
 </head>
-<body class="bg-dark-bg text-dark-text min-h-screen">
-    <!-- Auth Container (Login/Register) -->
-    <div id="auth-container" class="hidden">
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-bg via-slate-900 to-slate-800">
-            <div class="w-full max-w-md p-8">
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 mb-4">
-                        <i data-lucide="brain-circuit" class="w-8 h-8 text-white"></i>
+<body class="text-slate-300">
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-8 w-full max-w-md fade-in">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M12 18V5"></path>
+                        <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"></path>
+                        <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"></path>
+                        <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"></path>
+                        <path d="M18 18a4 4 0 0 0 2-7.464"></path>
+                        <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"></path>
+                        <path d="M6 18a4 4 0 0 1-2-7.464"></path>
+                        <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"></path>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-white" id="authTitle">Welcome to MemoryX</h2>
+                <p class="text-sm text-slate-500 mt-1" id="authSubtitle">Sign in with your email</p>
+            </div>
+
+            <!-- Step 1: Email Input -->
+            <div id="stepEmail" class="fade-in">
+                <form id="emailForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Email Address</label>
+                        <input type="email" id="emailInput" required 
+                            class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-indigo-500 transition-colors" 
+                            placeholder="you@example.com"
+                            autocomplete="email">
+                        <p id="emailError" class="text-red-400 text-xs mt-2 hidden"></p>
                     </div>
-                    <h1 class="text-2xl font-bold">OpenMemoryX</h1>
-                    <p class="text-dark-muted mt-2">AI 记忆管理平台</p>
+                    
+                    <div id="emailHint" class="text-xs text-slate-500 bg-slate-800/50 p-3 rounded-lg">
+                        <i data-lucide="mail" class="w-4 h-4 inline mr-1"></i>
+                        We'll send you a magic link to sign in instantly. No password needed!
+                    </div>
+                    
+                    <button type="submit" id="emailSubmitBtn" 
+                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                        <span id="btnText">Send Magic Link</span>
+                        <svg id="btnSpinner" class="animate-spin hidden w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </form>
+                
+                <p class="text-xs text-slate-600 text-center mt-6">
+                    By continuing, you agree to our <a href="#" class="text-slate-500 hover:text-slate-400">Terms</a>
+                    and <a href="#" class="text-slate-500 hover:text-slate-400">Privacy Policy</a>
+                </p>
+            </div>
+
+            <!-- Step 2: Check Email -->
+            <div id="stepCheckEmail" class="hidden text-center fade-in">
+                <div class="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="mail-check" class="w-8 h-8 text-indigo-400"></i>
                 </div>
                 
-                <!-- Login Form -->
-                <div id="login-form" class="card p-6 fade-in">
-                    <h2 class="text-xl font-semibold mb-4">登录</h2>
-                    <form id="login-form-el" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-dark-muted mb-1">邮箱</label>
-                            <input type="email" id="login-email" required
-                                class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                                placeholder="your@email.com">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-dark-muted mb-1">密码</label>
-                            <input type="password" id="login-password" required
-                                class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                                placeholder="••••••••">
-                        </div>
-                        <div class="flex items-center justify-between text-sm">
-                            <label class="flex items-center">
-                                <input type="checkbox" class="mr-2 rounded bg-slate-800 border-dark-border">
-                                <span class="text-dark-muted">记住我</span>
-                            </label>
-                            <a href="#" class="text-primary-400 hover:text-primary-300">忘记密码?</a>
-                        </div>
-                        <button type="submit" id="login-btn"
-                            class="w-full btn-primary text-white font-medium py-2.5 rounded-lg transition-all flex items-center justify-center">
-                            <span id="login-btn-text">登录</span>
-                            <div id="login-btn-loader" class="loading hidden"></div>
-                        </button>
-                    </form>
-                    <p class="mt-4 text-center text-sm text-dark-muted">
-                        还没有账号? 
-                        <button onclick="showRegister()" class="text-primary-400 hover:text-primary-300 font-medium">立即注册</button>
-                    </p>
+                <h3 class="text-lg font-semibold text-white mb-2">Check your email</h3>
+                
+                <p class="text-slate-400 mb-4">
+                    We've sent a magic link to<br>
+                    <span id="sentEmail" class="text-white font-medium"></span>
+                </p>
+                
+                <div class="bg-slate-800/50 rounded-lg p-4 mb-6 text-left">
+                    <p class="text-sm text-slate-400 mb-2"><strong class="text-slate-300">What's next?</strong></p>
+                    <ul class="text-sm text-slate-500 space-y-1">
+                        <li>1. Open your email inbox</li>
+                        <li>2. Click the <strong class="text-indigo-400">"Sign in to MemoryX"</strong> button</li>
+                        <li>3. You'll be logged in automatically</li>
+                    </ul>
                 </div>
-
-                <!-- Register Form -->
-                <div id="register-form" class="card p-6 hidden fade-in">
-                    <h2 class="text-xl font-semibold mb-4">注册</h2>
-                    <form id="register-form-el" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-dark-muted mb-1">用户名</label>
-                            <input type="text" id="register-username" required
-                                class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                                placeholder="用户名">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-dark-muted mb-1">邮箱</label>
-                            <input type="email" id="register-email" required
-                                class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                                placeholder="your@email.com">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-dark-muted mb-1">密码</label>
-                            <input type="password" id="register-password" required minlength="6"
-                                class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                                placeholder="••••••••">
-                        </div>
-                        <button type="submit" id="register-btn"
-                            class="w-full btn-primary text-white font-medium py-2.5 rounded-lg transition-all flex items-center justify-center">
-                            <span id="register-btn-text">注册</span>
-                            <div id="register-btn-loader" class="loading hidden"></div>
-                        </button>
-                    </form>
-                    <p class="mt-4 text-center text-sm text-dark-muted">
-                        已有账号? 
-                        <button onclick="showLogin()" class="text-primary-400 hover:text-primary-300 font-medium">立即登录</button>
-                    </p>
+                
+                <div class="space-y-3">
+                    <button onclick="resendLink()" id="resendBtn" 
+                        class="text-sm text-indigo-400 hover:text-indigo-300 disabled:text-slate-600">
+                        Didn't receive it? Resend
+                    </button>
+                    <span id="resendTimer" class="text-sm text-slate-500 hidden">(60s)</span>
+                    <br>
+                    
+                    <button onclick="backToEmail()" class="text-sm text-slate-500 hover:text-slate-400">
+                        ← Use a different email
+                    </button>
                 </div>
             </div>
+
+            <!-- Step 3: Processing Login Link -->
+            <div id="stepProcessing" class="hidden text-center fade-in">
+                <div class="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-6 animate-pulse">
+                    <i data-lucide="loader-2" class="w-8 h-8 text-indigo-400 animate-spin"></i>
+                </div>
+                
+                <h3 class="text-lg font-semibold text-white mb-2">Signing you in...</h3>
+                <p class="text-slate-400">Please wait while we verify your magic link</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="stepError" class="hidden text-center fade-in">
+                <div class="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="alert-circle" class="w-8 h-8 text-red-400"></i>
+                </div>
+                
+                <h3 class="text-lg font-semibold text-white mb-2">Something went wrong</h3>
+                
+                <p id="errorMessage" class="text-slate-400 mb-6">The link may have expired or is invalid.</p>
+                
+                <button onclick="backToEmail()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+                    Try Again
+                </button>
+            </div>
+
         </div>
     </div>
 
-    <!-- Main App Container -->
-    <div id="app-container" class="hidden">
-        <div class="flex min-h-screen">
-            <!-- Sidebar -->
-            <aside id="sidebar" class="w-64 bg-slate-900 border-r border-dark-border flex flex-col">
-                <!-- Logo -->
-                <div class="h-16 flex items-center px-6 border-b border-dark-border">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                            <i data-lucide="brain-circuit" class="w-5 h-5 text-white"></i>
-                        </div>
-                        <span class="text-lg font-semibold">OpenMemoryX</span>
+    <!-- Main App (hidden until login) -->
+    <div id="mainApp" class="hidden flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-[#0f0f13] border-r border-slate-800 flex flex-col">
+            <div class="p-4 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M12 18V5"></path>
+                            <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"></path>
+                            <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"></path>
+                            <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"></path>
+                            <path d="M18 18a4 4 0 0 0 2-7.464"></path>
+                            <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"></path>
+                            <path d="M6 18a4 4 0 0 1-2-7.464"></path>
+                            <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"></path>
+                        </svg>
                     </div>
+                    <span class="font-bold text-white">MemoryX</span>
                 </div>
-
-                <!-- Navigation -->
-                <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-                    <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-primary-400"></i>
-                        <span>Dashboard</span>
-                    </button>
-                    <button onclick="navigateTo('memories')" id="nav-memories" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="database" class="w-5 h-5 text-emerald-400"></i>
-                        <span>Memories</span>
-                    </button>
-                    <button onclick="navigateTo('api-keys')" id="nav-api-keys" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="key" class="w-5 h-5 text-amber-400"></i>
-                        <span>API Keys</span>
-                    </button>
-                    <button onclick="navigateTo('projects')" id="nav-projects" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="folder" class="w-5 h-5 text-purple-400"></i>
-                        <span>Projects</span>
-                    </button>
-                    <button onclick="navigateTo('stats')" id="nav-stats" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-cyan-400"></i>
-                        <span>Stats</span>
-                    </button>
-                    <button onclick="navigateTo('settings')" id="nav-settings" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left">
-                        <i data-lucide="settings" class="w-5 h-5 text-slate-400"></i>
-                        <span>Settings</span>
-                    </button>
-                </nav>
-
-                <!-- User Card -->
-                <div class="p-4 border-t border-dark-border">
-                    <div class="flex items-center space-x-3 p-3 rounded-lg bg-slate-800/50">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
-                            <i data-lucide="user" class="w-5 h-5 text-white"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p id="user-name" class="text-sm font-medium truncate">Loading...</p>
-                            <p id="user-email" class="text-xs text-dark-muted truncate">Loading...</p>
-                        </div>
-                        <button onclick="logout()" class="p-1.5 hover:bg-slate-700 rounded-lg transition-colors" title="退出登录">
-                            <i data-lucide="log-out" class="w-4 h-4 text-slate-400"></i>
-                        </button>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Content -->
-            <div class="flex-1 flex flex-col min-w-0">
-                <!-- Header -->
-                <header class="h-16 glass border-b border-dark-border flex items-center justify-between px-6 sticky top-0 z-40">
-                    <div class="flex items-center">
-                        <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="lg:hidden mr-4 p-2 hover:bg-slate-800 rounded-lg">
-                            <i data-lucide="menu" class="w-5 h-5"></i>
-                        </button>
-                        <h2 id="page-title" class="text-xl font-semibold">Dashboard</h2>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <button class="p-2 hover:bg-slate-800 rounded-lg transition-colors relative">
-                            <i data-lucide="bell" class="w-5 h-5 text-dark-muted"></i>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
-                        <button class="p-2 hover:bg-slate-800 rounded-lg transition-colors">
-                            <i data-lucide="help-circle" class="w-5 h-5 text-dark-muted"></i>
-                        </button>
-                    </div>
-                </header>
-
-                <!-- Content Area -->
-                <main class="flex-1 p-6 overflow-y-auto">
-                    <!-- Dashboard Page -->
-                    <div id="page-dashboard" class="page-content fade-in">
-                        <!-- Stats Cards -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                            <div class="card p-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm text-dark-muted">总记忆数</p>
-                                        <p id="stat-total-memories" class="text-2xl font-bold mt-1">-</p>
-                                    </div>
-                                    <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                                        <i data-lucide="database" class="w-6 h-6 text-emerald-400"></i>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex items-center text-sm">
-                                    <span class="text-emerald-400 flex items-center">
-                                        <i data-lucide="trending-up" class="w-4 h-4 mr-1"></i>
-                                        +12%
-                                    </span>
-                                    <span class="text-dark-muted ml-2">vs 上月</span>
-                                </div>
-                            </div>
-                            <div class="card p-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm text-dark-muted">API 调用</p>
-                                        <p id="stat-api-calls" class="text-2xl font-bold mt-1">-</p>
-                                    </div>
-                                    <div class="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
-                                        <i data-lucide="activity" class="w-6 h-6 text-primary-400"></i>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex items-center text-sm">
-                                    <span class="text-emerald-400 flex items-center">
-                                        <i data-lucide="trending-up" class="w-4 h-4 mr-1"></i>
-                                        +24%
-                                    </span>
-                                    <span class="text-dark-muted ml-2">vs 上月</span>
-                                </div>
-                            </div>
-                            <div class="card p-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm text-dark-muted">API Keys</p>
-                                        <p id="stat-api-keys" class="text-2xl font-bold mt-1">-</p>
-                                    </div>
-                                    <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                                        <i data-lucide="key" class="w-6 h-6 text-amber-400"></i>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex items-center text-sm">
-                                    <span class="text-dark-muted">活跃密钥</span>
-                                </div>
-                            </div>
-                            <div class="card p-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm text-dark-muted">存储使用</p>
-                                        <p id="stat-storage" class="text-2xl font-bold mt-1">-</p>
-                                    </div>
-                                    <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                                        <i data-lucide="hard-drive" class="w-6 h-6 text-purple-400"></i>
-                                    </div>
-                                </div>
-                                <div class="mt-4">
-                                    <div class="w-full bg-slate-700 rounded-full h-2">
-                                        <div class="bg-purple-500 h-2 rounded-full" style="width: 45%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Recent Activity & Quick Actions -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <!-- Recent Memories -->
-                            <div class="card p-6 lg:col-span-2">
-                                <div class="flex items-center justify-between mb-4">
-                                    <h3 class="text-lg font-semibold">最近记忆</h3>
-                                    <button onclick="navigateTo('memories')" class="text-sm text-primary-400 hover:text-primary-300">查看全部</button>
-                                </div>
-                                <div id="recent-memories-list" class="space-y-3">
-                                    <div class="flex items-center justify-center py-8 text-dark-muted">
-                                        <div class="loading mr-3"></div>
-                                        加载中...
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Quick Actions -->
-                            <div class="card p-6">
-                                <h3 class="text-lg font-semibold mb-4">快捷操作</h3>
-                                <div class="space-y-3">
-                                    <button onclick="openAddMemoryModal()" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors text-left">
-                                        <i data-lucide="plus" class="w-5 h-5 text-emerald-400"></i>
-                                        <span>添加记忆</span>
-                                    </button>
-                                    <button onclick="navigateTo('api-keys')" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors text-left">
-                                        <i data-lucide="key" class="w-5 h-5 text-amber-400"></i>
-                                        <span>创建 API Key</span>
-                                    </button>
-                                    <button onclick="navigateTo('settings')" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors text-left">
-                                        <i data-lucide="user-cog" class="w-5 h-5 text-primary-400"></i>
-                                        <span>账户设置</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Memories Page -->
-                    <div id="page-memories" class="page-content hidden fade-in">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="flex items-center space-x-4">
-                                <div class="relative">
-                                    <i data-lucide="search" class="w-5 h-5 text-dark-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                    <input type="text" id="memory-search" placeholder="搜索记忆..."
-                                        class="pl-10 pr-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none w-64">
-                                </div>
-                                <select id="memory-filter" class="px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    <option value="">全部类型</option>
-                                    <option value="text">文本</option>
-                                    <option value="image">图片</option>
-                                    <option value="code">代码</option>
-                                </select>
-                            </div>
-                            <button onclick="openAddMemoryModal()" class="btn-primary px-4 py-2 rounded-lg flex items-center space-x-2">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                                <span>添加记忆</span>
-                            </button>
-                        </div>
-                        <div id="memories-list" class="space-y-3">
-                            <div class="flex items-center justify-center py-12">
-                                <div class="loading mr-3"></div>
-                                <span class="text-dark-muted">加载记忆中...</span>
-                            </div>
-                        </div>
-                        <div id="memories-pagination" class="flex items-center justify-between mt-6">
-                            <span class="text-sm text-dark-muted">显示 <span id="memories-showing">0</span> 条</span>
-                            <div class="flex space-x-2">
-                                <button onclick="loadMemories(currentPage - 1)" id="memories-prev" class="px-3 py-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50" disabled>上一页</button>
-                                <button onclick="loadMemories(currentPage + 1)" id="memories-next" class="px-3 py-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50" disabled>下一页</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Memory Detail Page -->
-                    <div id="page-memory-detail" class="page-content hidden fade-in">
-                        <button onclick="navigateTo('memories')" class="mb-4 flex items-center text-dark-muted hover:text-dark-text transition-colors">
-                            <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>
-                            返回记忆列表
-                        </button>
-                        <div class="card p-6">
-                            <div id="memory-detail-content">
-                                <div class="flex items-center justify-center py-12">
-                                    <div class="loading mr-3"></div>
-                                    <span class="text-dark-muted">加载中...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- API Keys Page -->
-                    <div id="page-api-keys" class="page-content hidden fade-in">
-                        <div class="flex items-center justify-between mb-6">
-                            <p class="text-dark-muted">管理您的 API 密钥以访问 OpenMemoryX API</p>
-                            <button onclick="openCreateKeyModal()" class="btn-primary px-4 py-2 rounded-lg flex items-center space-x-2">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                                <span>创建新密钥</span>
-                            </button>
-                        </div>
-                        <div class="card overflow-hidden">
-                            <table class="w-full">
-                                <thead class="bg-slate-800/50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">名称</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">密钥</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">创建时间</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="api-keys-list" class="divide-y divide-dark-border">
-                                    <tr>
-                                        <td colspan="4" class="px-6 py-8 text-center text-dark-muted">
-                                            <div class="loading inline-block mr-2"></div>
-                                            加载中...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Projects Page -->
-                    <div id="page-projects" class="page-content hidden fade-in">
-                        <div class="flex items-center justify-between mb-6">
-                            <p class="text-dark-muted">管理您的项目</p>
-                            <button class="btn-primary px-4 py-2 rounded-lg flex items-center space-x-2">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                                <span>新建项目</span>
-                            </button>
-                        </div>
-                        <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div class="card p-6 text-center py-12">
-                                <i data-lucide="folder-open" class="w-12 h-12 text-dark-muted mx-auto mb-4"></i>
-                                <p class="text-dark-muted">暂无项目</p>
-                                <button class="mt-4 text-primary-400 hover:text-primary-300">创建第一个项目</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Stats Page -->
-                    <div id="page-stats" class="page-content hidden fade-in">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="card p-6">
-                                <h3 class="text-lg font-semibold mb-4">API 调用趋势</h3>
-                                <div class="h-64 flex items-center justify-center bg-slate-800/30 rounded-lg">
-                                    <p class="text-dark-muted">图表加载中...</p>
-                                </div>
-                            </div>
-                            <div class="card p-6">
-                                <h3 class="text-lg font-semibold mb-4">记忆类型分布</h3>
-                                <div class="h-64 flex items-center justify-center bg-slate-800/30 rounded-lg">
-                                    <p class="text-dark-muted">图表加载中...</p>
-                                </div>
-                            </div>
-                            <div class="card p-6 lg:col-span-2">
-                                <h3 class="text-lg font-semibold mb-4">使用统计</h3>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div class="text-center p-4 bg-slate-800/50 rounded-lg">
-                                        <p class="text-2xl font-bold text-primary-400">1,234</p>
-                                        <p class="text-sm text-dark-muted">今日调用</p>
-                                    </div>
-                                    <div class="text-center p-4 bg-slate-800/50 rounded-lg">
-                                        <p class="text-2xl font-bold text-emerald-400">98.5%</p>
-                                        <p class="text-sm text-dark-muted">成功率</p>
-                                    </div>
-                                    <div class="text-center p-4 bg-slate-800/50 rounded-lg">
-                                        <p class="text-2xl font-bold text-purple-400">45ms</p>
-                                        <p class="text-sm text-dark-muted">平均响应</p>
-                                    </div>
-                                    <div class="text-center p-4 bg-slate-800/50 rounded-lg">
-                                        <p class="text-2xl font-bold text-amber-400">24h</p>
-                                        <p class="text-sm text-dark-muted">数据保留</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Settings Page -->
-                    <div id="page-settings" class="page-content hidden fade-in">
-                        <div class="max-w-2xl">
-                            <!-- Account Settings -->
-                            <div class="card p-6 mb-6">
-                                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                                    <i data-lucide="user" class="w-5 h-5 mr-2 text-primary-400"></i>
-                                    账户信息
-                                </h3>
-                                <form id="settings-form" class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-dark-muted mb-1">用户名</label>
-                                        <input type="text" id="settings-username"
-                                            class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-dark-muted mb-1">邮箱</label>
-                                        <input type="email" id="settings-email" disabled
-                                            class="w-full px-4 py-2 bg-slate-800/50 border border-dark-border rounded-lg text-dark-muted cursor-not-allowed">
-                                    </div>
-                                    <div class="pt-2">
-                                        <button type="submit" class="btn-primary px-6 py-2 rounded-lg">
-                                            保存更改
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Password Settings -->
-                            <div class="card p-6 mb-6">
-                                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                                    <i data-lucide="lock" class="w-5 h-5 mr-2 text-amber-400"></i>
-                                    修改密码
-                                </h3>
-                                <form id="password-form" class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-dark-muted mb-1">当前密码</label>
-                                        <input type="password" required
-                                            class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-dark-muted mb-1">新密码</label>
-                                        <input type="password" required minlength="6"
-                                            class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-dark-muted mb-1">确认新密码</label>
-                                        <input type="password" required
-                                            class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    </div>
-                                    <div class="pt-2">
-                                        <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg transition-colors">
-                                            更新密码
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Danger Zone -->
-                            <div class="card p-6 border-red-500/30">
-                                <h3 class="text-lg font-semibold mb-4 text-red-400 flex items-center">
-                                    <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>
-                                    危险区域
-                                </h3>
-                                <p class="text-dark-muted mb-4">删除账户是不可逆的操作，所有数据将被永久删除。</p>
-                                <button onclick="confirmDeleteAccount()" class="border border-red-500 text-red-400 hover:bg-red-500/10 px-6 py-2 rounded-lg transition-colors">
-                                    删除账户
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </main>
             </div>
-        </div>
+            
+            <nav class="flex-1 p-3 space-y-1">
+                <p class="px-3 text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 mt-4">Overview</p>
+                <a href="#" onclick="showSection('dashboard')" class="nav-link active flex items-center gap-3 px-3 py-2 text-sm text-white bg-slate-800/80 rounded-lg font-medium" data-section="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    Dashboard
+                </a>
+                <a href="#" onclick="showSection('memories')" class="nav-link flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-colors" data-section="memories">
+                    <i data-lucide="brain" class="w-4 h-4"></i>
+                    Memories
+                    <span id="memoryCount" class="ml-auto text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full">0</span>
+                </a>
+                <a href="#" onclick="showSection('apikeys')" class="nav-link flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-colors" data-section="apikeys">
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                    API Keys
+                </a>
+                
+                <p class="px-3 text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 mt-6">Account</p>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    Logout
+                </a>
+            </nav>
+            
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium" id="userAvatar">A</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate" id="userEmail">-</p>
+                        <p class="text-xs text-slate-500">Free Plan</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto">
+            <header class="sticky top-0 z-40 bg-[#0a0a0f]/80 backdrop-blur-md border-b border-slate-800 px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-semibold text-white" id="pageTitle">Dashboard</h1>
+                    
+                    <div class="flex items-center gap-4">
+                        <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-white transition-colors" title="Refresh">
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        </button>
+                        <a href="https://docs.t0ken.ai" target="_blank" class="text-slate-400 hover:text-white transition-colors">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <div id="dashboardSection" class="p-8 section-content">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                <i data-lucide="brain" class="w-5 h-5 text-indigo-400"></i>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold text-white" id="statMemories">0</p>
+                        <p class="text-sm text-slate-500">Total Memories</p>
+                    </div>
+
+                    <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                <i data-lucide="key" class="w-5 h-5 text-green-400"></i>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold text-white" id="statApiKeys">0</p>
+                        <p class="text-sm text-slate-500">API Keys</p>
+                    </div>
+
+                    <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <i data-lucide="folder" class="w-5 h-5 text-blue-400"></i>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold text-white" id="statProjects">1</p>
+                        <p class="text-sm text-slate-500">Projects</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 mb-8">
+                    <h2 class="font-semibold text-white mb-4">Quick Actions</h2>
+                    <div class="flex flex-wrap gap-4">
+                        <button onclick="showCreateMemoryModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            New Memory
+                        </button>
+                        <button onclick="showSection('apikeys')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                            <i data-lucide="key" class="w-4 h-4"></i>
+                            Create API Key
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 border border-slate-800 rounded-xl">
+                    <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h2 class="font-semibold text-white">Recent Memories</h2>
+                        <a href="#" onclick="showSection('memories')" class="text-sm text-indigo-400 hover:text-indigo-300">View all</a>
+                    </div>
+                    <div id="recentMemoriesList" class="divide-y divide-slate-800">
+                        <div class="p-6 text-center text-slate-500">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="memoriesSection" class="hidden p-8 section-content">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-4 flex-1">
+                        <div class="relative flex-1 max-w-md">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" id="memorySearch" placeholder="Search memories..." class="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <button onclick="searchMemories()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium">Search</button>
+                    </div>
+                    <button onclick="showCreateMemoryModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>New Memory
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/50 border border-slate-800 rounded-xl">
+                    <div id="memoriesList" class="divide-y divide-slate-800">
+                        <div class="p-6 text-center text-slate-500">Loading memories...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="apikeysSection" class="hidden p-8 section-content">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-white">API Keys</h2>
+                    <button onclick="createApiKey()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>Create Key
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/50 border border-slate-800 rounded-xl">
+                    <div id="apiKeysList" class="divide-y divide-slate-800">
+                        <div class="p-6 text-center text-slate-500">Loading API keys...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Modals -->
-    <!-- Add Memory Modal -->
-    <div id="add-memory-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="card w-full max-w-lg mx-4 p-6 fade-in">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">添加记忆</h3>
-                <button onclick="closeModal('add-memory-modal')" class="p-1 hover:bg-slate-700 rounded-lg">
+    <!-- Create Memory Modal -->
+    <div id="createMemoryModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-lg">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-white">Create Memory</h3>
+                <button onclick="hideCreateMemoryModal()" class="text-slate-400 hover:text-white">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <form id="add-memory-form" class="space-y-4">
+            
+            <form id="createMemoryForm" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-dark-muted mb-1">内容</label>
-                    <textarea id="memory-content" rows="4" required
-                        class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none"
-                        placeholder="输入要存储的记忆内容..."></textarea>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Content</label>
+                    <textarea id="memoryContent" required rows="4" class="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-indigo-500" placeholder="Enter memory content..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-dark-muted mb-1">类型</label>
-                    <select id="memory-type"
-                        class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                        <option value="text">文本</option>
-                        <option value="code">代码</option>
-                        <option value="url">URL</option>
-                        <option value="note">笔记</option>
-                    </select>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Project ID (optional)</label>
+                    <input type="text" id="memoryProject" class="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-indigo-500" placeholder="default">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-dark-muted mb-1">标签 (可选)</label>
-                    <input type="text" id="memory-tags"
-                        class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                        placeholder="用逗号分隔标签">
-                </div>
-                <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" onclick="closeModal('add-memory-modal')" class="px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors">
-                        取消
-                    </button>
-                    <button type="submit" class="btn-primary px-6 py-2 rounded-lg">
-                        保存
-                    </button>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="hideCreateMemoryModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">Create</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Create API Key Modal -->
-    <div id="create-key-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="card w-full max-w-md mx-4 p-6 fade-in">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">创建 API Key</h3>
-                <button onclick="closeModal('create-key-modal')" class="p-1 hover:bg-slate-700 rounded-lg">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <form id="create-key-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-dark-muted mb-1">名称</label>
-                    <input type="text" id="key-name" required
-                        class="w-full px-4 py-2 bg-slate-800 border border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                        placeholder="例如: 生产环境">
-                </div>
-                <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" onclick="closeModal('create-key-modal')" class="px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors">
-                        取消
-                    </button>
-                    <button type="submit" class="btn-primary px-6 py-2 rounded-lg">
-                        创建
-                    </button>
-                </div>
-            </form>
-        </div>
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-4 right-4 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3">
+        <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+        <span id="toastMessage">Success!</span>
     </div>
 
-    <!-- Show API Key Modal -->
-    <div id="show-key-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="card w-full max-w-lg mx-4 p-6 fade-in">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-emerald-400">API Key 已创建</h3>
-                <button onclick="closeModal('show-key-modal')" class="p-1 hover:bg-slate-700 rounded-lg">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mb-4">
-                <p class="text-sm text-emerald-300 mb-2">请立即复制您的 API Key，它只会显示一次：</p>
-                <div class="flex items-center space-x-2">
-                    <code id="new-api-key" class="flex-1 bg-slate-900 px-3 py-2 rounded text-sm font-mono break-all"></code>
-                    <button onclick="copyToClipboard('new-api-key')" class="p-2 hover:bg-slate-700 rounded-lg" title="复制">
-                        <i data-lucide="copy" class="w-4 h-4"></i>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { 
+            getAuth, 
+            sendSignInLinkToEmail, 
+            isSignInWithEmailLink, 
+            signInWithEmailLink,
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDfVaaDxgLuBowP61mEDnyyT0hNEbQczvM",
+            authDomain: "t0ken-b62d0.firebaseapp.com",
+            projectId: "t0ken-b62d0",
+            storageBucket: "t0ken-b62d0.firebasestorage.app",
+            messagingSenderId: "63204978168",
+            appId: "1:63204978168:web:e3293bfa89442cf3e0ba0d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Make auth available globally
+        window.firebaseAuth = auth;
+        window.firebaseSignOut = signOut;
+
+        // Check if user is already logged in
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is signed in, get ID token and login to our backend
+                const idToken = await user.getIdToken();
+                await loginToBackend(idToken, user.email);
+            } else {
+                // Check if this is a sign-in link
+                if (isSignInWithEmailLink(auth, window.location.href)) {
+                    showStep('stepProcessing');
+                    
+                    // Get email from localStorage
+                    let email = localStorage.getItem('emailForSignIn');
+                    
+                    if (!email) {
+                        // If email not in localStorage, show error
+                        showStep('stepError');
+                        document.getElementById('errorMessage').textContent = 'Please open the link on the same device where you requested it.';
+                        return;
+                    }
+                    
+                    try {
+                        const result = await signInWithEmailLink(auth, email, window.location.href);
+                        const idToken = await result.user.getIdToken();
+                        await loginToBackend(idToken, result.user.email);
+                        
+                        // Clear email from storage
+                        localStorage.removeItem('emailForSignIn');
+                        
+                        // Clear URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } catch (error) {
+                        console.error('Sign in error:', error);
+                        showStep('stepError');
+                        document.getElementById('errorMessage').textContent = error.message;
+                    }
+                } else {
+                    // Not logged in, show auth modal
+                    showAuthModal();
+                }
+            }
+        });
+
+        // Send magic link
+        window.sendMagicLink = async (email) => {
+            const actionCodeSettings = {
+                url: window.location.href,
+                handleCodeInApp: true
+            };
+            
+            await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+            
+            // Save email for later
+            localStorage.setItem('emailForSignIn', email);
+        };
+
+        // Login to our backend
+        async function loginToBackend(idToken, email) {
+            try {
+                const response = await fetch('/api/auth/firebase', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('memoryx_token', data.access_token);
+                    localStorage.setItem('memoryx_email', email);
+                    showMainApp();
+                    loadDashboardData();
+                    showToast('Welcome!');
+                } else {
+                    throw new Error('Backend login failed');
+                }
+            } catch (error) {
+                console.error('Backend login error:', error);
+                await signOut(auth);
+                showStep('stepError');
+                document.getElementById('errorMessage').textContent = 'Login failed. Please try again.';
+            }
+        }
+
+        // Logout
+        window.firebaseLogout = async () => {
+            await signOut(auth);
+            localStorage.removeItem('memoryx_token');
+            localStorage.removeItem('memoryx_email');
+            localStorage.removeItem('emailForSignIn');
+        };
+    </script>
+
+    <script>
+        const API_BASE = '/api';
+        let authToken = localStorage.getItem('memoryx_token');
+        let resendTimer = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupEmailForm();
+        });
+
+        // Email form handler
+        function setupEmailForm() {
+            document.getElementById('emailForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = document.getElementById('emailInput').value.trim();
+                const btn = document.getElementById('emailSubmitBtn');
+                const btnText = document.getElementById('btnText');
+                const btnSpinner = document.getElementById('btnSpinner');
+                const errorEl = document.getElementById('emailError');
+                
+                // Validate email
+                if (!isValidEmail(email)) {
+                    errorEl.textContent = 'Please enter a valid email address';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                
+                errorEl.classList.add('hidden');
+                
+                // Show loading
+                btn.disabled = true;
+                btnText.textContent = 'Sending...';
+                btnSpinner.classList.remove('hidden');
+                
+                try {
+                    await window.sendMagicLink(email);
+                    
+                    document.getElementById('sentEmail').textContent = email;
+                    showStep('stepCheckEmail');
+                    startResendTimer(60);
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorEl.textContent = error.message || 'Failed to send magic link. Please try again.';
+                    errorEl.classList.remove('hidden');
+                } finally {
+                    btn.disabled = false;
+                    btnText.textContent = 'Send Magic Link';
+                    btnSpinner.classList.add('hidden');
+                }
+            });
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function showStep(stepId) {
+            ['stepEmail', 'stepCheckEmail', 'stepProcessing', 'stepError'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(stepId).classList.remove('hidden');
+        }
+
+        function backToEmail() {
+            showStep('stepEmail');
+            document.getElementById('emailInput').value = '';
+            if (resendTimer) clearInterval(resendTimer);
+        }
+
+        async function resendLink() {
+            const email = document.getElementById('sentEmail').textContent;
+            const btn = document.getElementById('resendBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            
+            try {
+                await window.sendMagicLink(email);
+                startResendTimer(60);
+                showToast('Magic link resent!');
+            } catch (error) {
+                showToast('Failed to resend. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = "Didn't receive it? Resend";
+            }
+        }
+
+        function startResendTimer(seconds) {
+            const btn = document.getElementById('resendBtn');
+            const timerEl = document.getElementById('resendTimer');
+            let remaining = seconds;
+            
+            btn.disabled = true;
+            btn.textContent = "Didn't receive it?";
+            timerEl.classList.remove('hidden');
+            timerEl.textContent = `(${remaining}s)`;
+            
+            if (resendTimer) clearInterval(resendTimer);
+            
+            resendTimer = setInterval(() => {
+                remaining--;
+                timerEl.textContent = `(${remaining}s)`;
+                
+                if (remaining <= 0) {
+                    clearInterval(resendTimer);
+                    btn.disabled = false;
+                    btn.textContent = "Didn't receive it? Resend";
+                    timerEl.classList.add('hidden');
+                }
+            }, 1000);
+        }
+
+        function showAuthModal() {
+            document.getElementById('authModal').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            showStep('stepEmail');
+        }
+
+        function showMainApp() {
+            document.getElementById('authModal').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            const email = localStorage.getItem('memoryx_email') || '';
+            document.getElementById('userEmail').textContent = email;
+            document.getElementById('userAvatar').textContent = email.charAt(0).toUpperCase();
+            lucide.createIcons();
+        }
+
+        async function logout() {
+            await window.firebaseLogout();
+            showAuthModal();
+            backToEmail();
+        }
+
+        // Navigation
+        function showSection(section) {
+            document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('active', 'text-white', 'bg-slate-800/80');
+                el.classList.add('text-slate-400');
+            });
+            
+            document.getElementById(section + 'Section').classList.remove('hidden');
+            document.querySelector(`[data-section="${section}"]`).classList.add('active', 'text-white', 'bg-slate-800/80');
+            document.querySelector(`[data-section="${section}"]`).classList.remove('text-slate-400');
+            
+            document.getElementById('pageTitle').textContent = section.charAt(0).toUpperCase() + section.slice(1);
+            
+            if (section === 'memories') loadMemories();
+            if (section === 'apikeys') loadApiKeys();
+            if (section === 'dashboard') loadDashboardData();
+            
+            lucide.createIcons();
+        }
+
+        // API Functions
+        async function apiRequest(endpoint, options = {}) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            return response.json();
+        }
+
+        async function loadDashboardData() {
+            try {
+                const [memories, apiKeys] = await Promise.all([
+                    apiRequest('/v1/memories?limit=1'),
+                    apiRequest('/keys')
+                ]);
+                
+                document.getElementById('statMemories').textContent = memories.total || 0;
+                document.getElementById('statApiKeys').textContent = apiKeys.data?.length || 0;
+                document.getElementById('memoryCount').textContent = memories.total || 0;
+                
+                const recent = await apiRequest('/v1/memories?limit=5');
+                renderRecentMemories(recent.data || []);
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        function renderRecentMemories(memories) {
+            const container = document.getElementById('recentMemoriesList');
+            if (!memories || memories.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-slate-500">No memories yet. Create your first memory!</div>';
+                return;
+            }
+            
+            container.innerHTML = memories.map(m => `
+                <div class="px-6 py-4 flex items-center gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                        <i data-lucide="brain" class="w-4 h-4 text-indigo-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-white truncate">${escapeHtml(m.content)}</p>
+                        <p class="text-xs text-slate-500">${m.cognitive_sector || 'semantic'} · ${formatDate(m.created_at)}</p>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function loadMemories() {
+            try {
+                const data = await apiRequest('/v1/memories?limit=50');
+                renderMemories(data.data || []);
+            } catch (error) {
+                console.error('Failed to load memories:', error);
+            }
+        }
+
+        function renderMemories(memories) {
+            const container = document.getElementById('memoriesList');
+            if (!memories || memories.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-slate-500">No memories found</div>';
+                return;
+            }
+            
+            container.innerHTML = memories.map(m => `
+                <div class="px-6 py-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                        <i data-lucide="brain" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-white">${escapeHtml(m.content)}</p>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-xs px-2 py-0.5 bg-slate-800 rounded text-slate-400">${m.cognitive_sector || 'semantic'}</span>
+                            <span class="text-xs text-slate-500">${formatDate(m.created_at)}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteMemory('${m.id}')" class="text-slate-400 hover:text-red-400 transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
-            </div>
-            <p class="text-sm text-dark-muted">请将此密钥保存在安全的地方，离开此页面后将无法再次查看完整密钥。</p>
-            <div class="flex justify-end pt-4">
-                <button onclick="closeModal('show-key-modal')" class="btn-primary px-6 py-2 rounded-lg">
-                    完成
-                </button>
-            </div>
-        </div>
-    </div>
+            `).join('');
+            lucide.createIcons();
+        }
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
-        <div class="bg-slate-800 border border-dark-border rounded-lg shadow-lg px-4 py-3 flex items-center space-x-3">
-            <i id="toast-icon" data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
-            <span id="toast-message">操作成功</span>
-        </div>
-    </div>
+        async function searchMemories() {
+            const query = document.getElementById('memorySearch').value;
+            if (!query) { loadMemories(); return; }
+            
+            try {
+                const data = await apiRequest('/v1/memories/search', {
+                    method: 'POST',
+                    body: JSON.stringify({ query, limit: 20 })
+                });
+                renderMemories(data.data || []);
+            } catch (error) {
+                showToast('Search failed', 'error');
+            }
+        }
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/app.js"></script>
+        function showCreateMemoryModal() {
+            document.getElementById('createMemoryModal').classList.remove('hidden');
+        }
+
+        function hideCreateMemoryModal() {
+            document.getElementById('createMemoryModal').classList.add('hidden');
+            document.getElementById('createMemoryForm').reset();
+        }
+
+        document.getElementById('createMemoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = document.getElementById('memoryContent').value;
+            const projectId = document.getElementById('memoryProject').value || 'default';
+            
+            try {
+                const keys = await apiRequest('/keys');
+                if (!keys.data || keys.data.length === 0) {
+                    showToast('Please create an API key first', 'error');
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/v1/memories`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': keys.data[0].key
+                    },
+                    body: JSON.stringify({ content, project_id: projectId })
+                });
+                
+                if (response.ok) {
+                    showToast('Memory created!');
+                    hideCreateMemoryModal();
+                    loadDashboardData();
+                    if (!document.getElementById('memoriesSection').classList.contains('hidden')) loadMemories();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (error) {
+                showToast('Failed to create memory', 'error');
+            }
+        });
+
+        async function deleteMemory(id) {
+            if (!confirm('Delete this memory?')) return;
+            try {
+                await apiRequest(`/v1/memories/${id}`, { method: 'DELETE' });
+                showToast('Memory deleted');
+                loadMemories();
+                loadDashboardData();
+            } catch (error) {
+                showToast('Failed to delete', 'error');
+            }
+        }
+
+        async function loadApiKeys() {
+            try {
+                const data = await apiRequest('/keys');
+                renderApiKeys(data.data || []);
+            } catch (error) {
+                console.error('Failed to load API keys:', error);
+            }
+        }
+
+        function renderApiKeys(keys) {
+            const container = document.getElementById('apiKeysList');
+            if (!keys || keys.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-slate-500">No API keys. Create one to get started.</div>';
+                return;
+            }
+            
+            container.innerHTML = keys.map(k => `
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <i data-lucide="key" class="w-5 h-5 text-green-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-white font-medium">${k.name}</p>
+                            <p class="text-xs text-slate-500 font-mono">${k.key}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="copyToClipboard('${k.key}')" class="text-slate-400 hover:text-white">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteApiKey(${k.id})" class="text-slate-400 hover:text-red-400">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function createApiKey() {
+            const name = prompt('API key name:', 'Production');
+            if (!name) return;
+            
+            try {
+                await apiRequest('/keys', { method: 'POST', body: JSON.stringify({ name }) });
+                showToast('API key created');
+                loadApiKeys();
+                loadDashboardData();
+            } catch (error) {
+                showToast('Failed to create', 'error');
+            }
+        }
+
+        async function deleteApiKey(id) {
+            if (!confirm('Delete this API key?')) return;
+            try {
+                await apiRequest(`/keys/${id}`, { method: 'DELETE' });
+                showToast('API key deleted');
+                loadApiKeys();
+                loadDashboardData();
+            } catch (error) {
+                showToast('Failed to delete', 'error');
+            }
+        }
+
+        function refreshData() {
+            loadDashboardData();
+            showToast('Data refreshed');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    </script>
 </body>
 </html>

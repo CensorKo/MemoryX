@@ -1,95 +1,157 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>隐私政策 - MemoryX</title>
+    <meta name="description" content="MemoryX 隐私政策">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0a; color: #e5e5e5; }
+        .gradient-text {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-    <nav class="border-b border-gray-800 bg-gray-900/50 backdrop-blur">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <a href="/" class="flex items-center gap-2">
-                    <i data-lucide="brain" class="w-6 h-6 text-purple-400"></i>
-                    <span class="font-bold">MemoryX</span>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="/" class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18a4 4 0 1 0 7.967-.517 4 4 0 0 0 .556-6.588 4 4 0 0 0-2.526-5.77A3 3 0 1 0 12 5"/>
+                            <path d="M12 18V5"/>
+                            <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold text-white">MemoryX</span>
                 </a>
+                
+                <a href="/" class="text-sm text-gray-400 hover:text-white transition-colors">← 返回首页</a>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <main class="max-w-3xl mx-auto px-4 py-12">
-        <h1 class="text-3xl font-bold mb-8">隐私政策</h1>
-        <div class="prose prose-invert max-w-none">
-            <p class="text-gray-400 mb-6">最后更新日期：2025年2月</p>
+    <!-- Content -->
+    <main class="pt-24 pb-16 px-6">
+        <div class="max-w-3xl mx-auto">
+            <div class="mb-12">
+                <h1 class="text-4xl font-bold mb-4"><span class="gradient-text">隐私政策</span></h1>
+                <p class="text-gray-400">最后更新日期：2026年2月13日</p>
+            </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">1. 数据收集</h2>
-            <p class="text-gray-300 mb-4">
-                MemoryX 收集以下信息以提供服务：
-            </p>
-            <ul class="list-disc list-inside text-gray-300 mb-6 space-y-2">
-                <li>账户信息（邮箱、用户名）</li>
-                <li>API 调用记录</li>
-                <li>存储的记忆数据</li>
-                <li>使用统计数据</li>
-            </ul>
+            <div class="prose prose-invert prose-gray max-w-none">
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">1. 我们收集的信息</h2>
+                    <p class="text-gray-300 mb-4">我们收集以下类型的信息：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li><strong class="text-white">账户信息</strong>：邮箱地址、用户ID</li>
+                        <li><strong class="text-white">记忆内容</strong>：您存储在 MemoryX 中的文本内容</li>
+                        <li><strong class="text-white">使用数据</strong>：API 调用次数、访问时间</li>
+                        <li><strong class="text-white">技术信息</strong>：IP 地址、浏览器类型（用于安全防护）</li>
+                    </ul>
+                </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">2. 数据使用</h2>
-            <p class="text-gray-300 mb-4">
-                我们使用收集的数据来：
-            </p>
-            <ul class="list-disc list-inside text-gray-300 mb-6 space-y-2">
-                <li>提供和维护服务</li>
-                <li>改进用户体验</li>
-                <li>发送服务通知</li>
-                <li>防止欺诈和滥用</li>
-            </ul>
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">2. 我们如何使用您的信息</h2>
+                    
+                    <p class="text-gray-300 mb-4">我们使用收集的信息来：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li>提供记忆存储和检索服务</li>
+                        <li>改进我们的 AI 分类算法</li>
+                        <li>发送服务通知（如安全警告）</li>
+                        <li>防止滥用和确保安全</li>
+                    </ul>
+                </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">3. 数据安全</h2>
-            <p class="text-gray-300 mb-4">
-                我们采取 industry-standard 的安全措施保护您的数据，包括：
-            </p>
-            <ul class="list-disc list-inside text-gray-300 mb-6 space-y-2">
-                <li>加密传输（HTTPS/TLS）</li>
-                <li>数据加密存储</li>
-                <li>访问控制和身份验证</li>
-                <li>定期安全审计</li>
-            </ul>
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">3. 数据存储与安全</h2>
+                    
+                    <p class="text-gray-300 mb-4">我们采取行业标准的措施保护您的数据：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li>所有数据传输使用 TLS 加密</li>
+                        <li>敏感信息（如 API Key）加密存储</li>
+                        <li>定期安全审计和漏洞扫描</li>
+                        <li>服务器位于安全的云数据中心</li>
+                    </ul>
+                </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">4. 数据保留</h2>
-            <p class="text-gray-300 mb-6">
-                用户数据将在账户存续期间保留。删除账户后，我们将在 30 天内删除所有相关数据。
-            </p>
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">4. 数据分享</h2>
+                    
+                    <p class="text-gray-300 mb-4">我们不会出售您的数据。仅在以下情况分享：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li><strong class="text-white">法律要求</strong>：响应合法的政府请求</li>
+                        <li><strong class="text-white">服务提供商</strong>：如云存储、邮件服务商（仅用于提供服务）</li>
+                        <li><strong class="text-white">合并/收购</strong>：如公司被收购，数据将转移给新所有者</li>
+                    </ul>
+                </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">5. 用户权利</h2>
-            <p class="text-gray-300 mb-4">您有权：</p>
-            <ul class="list-disc list-inside text-gray-300 mb-6 space-y-2">
-                <li>访问您的个人数据</li>
-                <li>更正不准确的数据</li>
-                <li>删除您的账户和数据</li>
-                <li>导出您的数据</li>
-            </ul>
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">5. 您的权利</h2>
+                    
+                    <p class="text-gray-300 mb-4">您对您的数据拥有以下权利：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li><strong class="text-white">访问</strong>：查看您存储的所有数据</li>
+                        <li><strong class="text-white">删除</strong>：删除账户和所有相关数据</li>
+                        <li><strong class="text-white">导出</strong>：导出您的记忆数据</li>
+                        <li><strong class="text-white">更正</strong>：更新不准确的信息</li>
+                    </ul>
+                </div>
 
-            <h2 class="text-xl font-semibold mt-8 mb-4">6. 联系我们</h2>
-            <p class="text-gray-300 mb-6">
-                如有隐私相关问题，请联系：support@t0ken.ai
-            </p>
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">6. Cookie 政策</h2>
+                    
+                    <p class="text-gray-300 mb-4">我们使用 Cookie 来：</p>
+                    
+                    <ul class="list-disc list-inside text-gray-300 space-y-2">
+                        <li>保持您的登录状态</li>
+                        <li>记住您的偏好设置</li>
+                        <li>分析网站使用情况（匿名）</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">7. 儿童隐私</h2>
+                    
+                    <p class="text-gray-300">MemoryX 不面向13岁以下儿童。我们不会故意收集儿童个人信息。如发现儿童信息，请立即联系我们删除。</p>
+                </div>
+
+                <div class="bg-white/5 rounded-2xl p-8 mb-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">8. 政策更新</h2>
+                    
+                    <p class="text-gray-300">我们可能会更新此隐私政策。重大变更将通过邮件或网站通知。继续使用服务即表示接受新政策。</p>
+                </div>
+
+                <div class="bg-white/5 rounded-2xl p-8 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">9. 联系我们</h2>
+                    
+                    <p class="text-gray-300 mb-4">如有隐私相关问题，请联系我们：</p>
+                    
+                    <p class="text-gray-300">📧 邮箱：<a href="mailto:business@t0ken.ai" class="text-purple-400 hover:text-purple-300">business@t0ken.ai</a></p>
+                </div>
+            </div>
         </div>
     </main>
 
-    <footer class="border-t border-gray-800 py-8">
-        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500">
-            <p>© 2025 MemoryX. All rights reserved.</p>
+    <!-- Footer -->
+    <footer class="border-t border-white/10 py-8 px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <p class="text-gray-500 text-sm">© 2026 MemoryX. 保留所有权利。</p>
         </div>
     </footer>
-
-    <script>
-        lucide.createIcons();
-    </script>
 </body>
 </html>
