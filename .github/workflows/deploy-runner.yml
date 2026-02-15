@@ -9,10 +9,11 @@ on:
     types: [published]
   push:
     branches: [main]
-    paths:
-      - 'static/**'
-      - 'api/**'
-      - 'Dockerfile.api'
+    # Temporarily removed paths filter for testing
+    # paths:
+    #   - 'static/**'
+    #   - 'api/**'
+    #   - 'Dockerfile.api'
   workflow_dispatch:
     inputs:
       environment:
