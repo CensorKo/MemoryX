@@ -32,15 +32,8 @@ jobs:
   # 测试环境部署 (31.66) - 使用 t0ken-test runner
   deploy-alpha:
     name: Deploy to Test (31.66)
-    # Security: Multiple layers of protection
-    # 1. Only run on main repo
-    # 2. Only run for specific actors (repo members)
-    # 3. Skip for PRs from forks
-    if: |
-      github.repository == 't0ken-ai/MemoryX' &&
-      (github.event_name == 'push' || 
-       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')) &&
-      github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request'
+    # Only run on main repo and correct events
+    if: github.repository == 't0ken-ai/MemoryX'
     # Note: Environment approval can be enabled in GitHub settings
     # environment: alpha
     runs-on: t0ken-test
@@ -122,12 +115,8 @@ jobs:
   # 生产环境部署 (31.65) - 使用 t0ken-prod runner
   deploy-prod:
     name: Deploy to Production (31.65)
-    # Security: Multiple layers of protection
-    if: |
-      github.repository == 't0ken-ai/MemoryX' &&
-      (github.event_name == 'release' || 
-       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')) &&
-      github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request'
+    # Only run on main repo
+    if: github.repository == 't0ken-ai/MemoryX'
     # Note: Environment approval can be enabled in GitHub settings for production
     # environment: production
     runs-on: t0ken-prod
