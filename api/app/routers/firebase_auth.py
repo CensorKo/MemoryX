@@ -146,11 +146,21 @@ async def firebase_auth(
 @router.get("/firebase/config")
 async def get_firebase_config():
     """Get Firebase config for client-side initialization"""
+    from app.core.config import get_settings
+    settings = get_settings()
+    
+    # Return config only if Firebase is configured
+    if not settings.firebase_api_key:
+        raise HTTPException(
+            status_code=404, 
+            detail="Firebase Auth not configured. Please set FIREBASE_API_KEY environment variable."
+        )
+    
     return {
-        "apiKey": "AIzaSyDfVaaDxgLuBowP61mEDnyyT0hNEbQczvM",
-        "authDomain": "t0ken-b62d0.firebaseapp.com",
-        "projectId": "t0ken-b62d0",
-        "storageBucket": "t0ken-b62d0.firebasestorage.app",
-        "messagingSenderId": "63204978168",
-        "appId": "1:63204978168:web:e3293bfa89442cf3e0ba0d"
+        "apiKey": settings.firebase_api_key,
+        "authDomain": settings.firebase_auth_domain,
+        "projectId": settings.firebase_project_id,
+        "storageBucket": settings.firebase_storage_bucket,
+        "messagingSenderId": settings.firebase_messaging_sender_id,
+        "appId": settings.firebase_app_id
     }
