@@ -1,5 +1,8 @@
 name: Deploy with Self-Hosted Runner
 
+# Security: Only run on main repo, not forks
+# This prevents malicious code from forks running on self-hosted runners
+
 on:
   release:
     types: [published]
@@ -20,12 +23,21 @@ on:
           - prod
           - alpha
 
+# Prevent running on forks
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # 测试环境部署 (31.66) - 使用 t0ken-test runner
   deploy-alpha:
     name: Deploy to Test (31.66)
+    # Security: Only run on main repo, not forks
+    if: |
+      (github.event_name == 'push' || 
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')) &&
+      github.repository == 't0ken-ai/MemoryX'
     runs-on: t0ken-test
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -104,8 +116,12 @@ jobs:
   # 生产环境部署 (31.65) - 使用 t0ken-prod runner
   deploy-prod:
     name: Deploy to Production (31.65)
+    # Security: Only run on main repo, not forks
+    if: |
+      (github.event_name == 'release' || 
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')) &&
+      github.repository == 't0ken-ai/MemoryX'
     runs-on: t0ken-prod
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
