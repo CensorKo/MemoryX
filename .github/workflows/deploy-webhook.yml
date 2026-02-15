@@ -51,8 +51,8 @@ jobs:
           file: ./Dockerfile.api
           push: true
           tags: |
-            ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}
-            ghcr.io/t0ken-ai/memoryx:${{ github.ref_name == 'main' && 'alpha' || github.event.release.tag_name || 'latest' }}
+            ghcr.io/t0ken-ai/memoryx-api:sha-${{ github.sha }}
+            ghcr.io/t0ken-ai/memoryx-api:${{ github.ref_name == 'main' && 'alpha' || github.event.release.tag_name || 'latest' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -76,7 +76,7 @@ jobs:
               "repository": "${{ github.repository }}",
               "ref": "${{ github.ref }}",
               "sha": "${{ github.sha }}",
-              "image": "ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}"
+              "image": "ghcr.io/t0ken-ai/memoryx-api:sha-${{ github.sha }}"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
@@ -99,7 +99,7 @@ jobs:
               "repository": "${{ github.repository }}",
               "ref": "${{ github.ref }}",
               "sha": "${{ github.sha }}",
-              "image": "ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}"
+              "image": "ghcr.io/t0ken-ai/memoryx-api:sha-${{ github.sha }}"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
