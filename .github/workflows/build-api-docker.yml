@@ -1,4 +1,6 @@
 name: Build and Push API Docker Image
+# Description: Build and push Docker images to Docker Hub and GHCR
+# Trigger: push to main with api/** or Dockerfile.api changes, or workflow_dispatch
 
 on:
   push:
