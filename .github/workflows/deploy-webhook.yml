@@ -69,7 +69,7 @@ jobs:
       - name: Trigger Production Webhook
         run: |
           echo "🚀 Triggering production deployment (31.65)..."
-          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL_PROD }}?token=${{ secrets.DEPLOY_KEY }}&type=release" \
+          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=release" \
             -H "Content-Type: application/json" \
             -d '{
               "event": "release",
@@ -92,7 +92,7 @@ jobs:
       - name: Trigger Test Webhook
         run: |
           echo "🧪 Triggering test deployment (31.66)..."
-          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL_ALPHA }}?token=${{ secrets.DEPLOY_KEY }}&type=alpha" \
+          curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=alpha" \
             -H "Content-Type: application/json" \
             -d '{
               "event": "push",
