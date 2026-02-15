@@ -69,28 +69,16 @@ jobs:
       - name: Trigger Production Webhook
         run: |
           echo "🚀 Triggering production deployment (31.65)..."
-          # 构建 Webhook URL，处理已存在的查询参数
-          WEBHOOK_URL="${{ secrets.DEPLOY_WEBHOOK_URL_PROD }}"
-          if [[ "$WEBHOOK_URL" == *"?"* ]]; then
-            FULL_URL="${WEBHOOK_URL}&token=${{ secrets.DEPLOY_KEY }}&type=release"
-          else
-            FULL_URL="${WEBHOOK_URL}?token=${{ secrets.DEPLOY_KEY }}&type=release"
-          fi
-          curl -X POST "$FULL_URL" \
+          curl -X POST "https://t0ken.ai/deploy?token=${{ secrets.DEPLOY_KEY }}&type=release" \
             -H "Content-Type: application/json" \
             -d '{
               "event": "release",
               "repository": "${{ github.repository }}",
               "ref": "${{ github.ref }}",
               "sha": "${{ github.sha }}",
-              "image": "ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}",
-              "release": {
-                "tag_name": "${{ github.event.release.tag_name || 'manual' }}",
-                "name": "${{ github.event.release.name || 'Manual Deploy' }}"
-              }
+              "image": "ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
-            -o /dev/null \
             -s
           echo "✅ Production webhook triggered"
 
@@ -104,14 +92,7 @@ jobs:
       - name: Trigger Test Webhook
         run: |
           echo "🧪 Triggering test deployment (31.66)..."
-          # 构建 Webhook URL，处理已存在的查询参数
-          WEBHOOK_URL="${{ secrets.DEPLOY_WEBHOOK_URL_ALPHA }}"
-          if [[ "$WEBHOOK_URL" == *"?"* ]]; then
-            FULL_URL="${WEBHOOK_URL}&token=${{ secrets.DEPLOY_KEY }}&type=alpha"
-          else
-            FULL_URL="${WEBHOOK_URL}?token=${{ secrets.DEPLOY_KEY }}&type=alpha"
-          fi
-          curl -X POST "$FULL_URL" \
+          curl -X POST "https://t0ken.ai/deploy?token=${{ secrets.DEPLOY_KEY }}&type=alpha" \
             -H "Content-Type: application/json" \
             -d '{
               "event": "push",
@@ -121,6 +102,5 @@ jobs:
               "image": "ghcr.io/t0ken-ai/memoryx:sha-${{ github.sha }}"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
-            -o /dev/null \
             -s
           echo "✅ Test webhook triggered"
