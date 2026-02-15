@@ -29,4 +29,4 @@ ENV QDRANT_URL=http://qdrant:6333
 ENV QDRANT_API_KEY=""
 
 # 启动命令
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]# Trigger deploy at Sun Feb 15 14:36:32 CST 2026
