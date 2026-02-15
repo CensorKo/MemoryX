@@ -12,7 +12,7 @@ on:
 
 env:
   # Docker Hub (公开镜像)
-  DOCKERHUB_REPO: t0kenai/memoryx-api
+  DOCKERHUB_REPO: censorkoo/t0ken.ai
   # GitHub Container Registry (备用)
   GHCR_REPO: ghcr.io/t0ken-ai/memoryx-api
 
