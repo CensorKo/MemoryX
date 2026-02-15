@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     # Optional: Encryption
     memoryx_master_key: Optional[str] = None
     
+    # Firebase Auth Configuration (optional, for client-side auth)
+    firebase_api_key: Optional[str] = None
+    firebase_auth_domain: Optional[str] = None
+    firebase_project_id: Optional[str] = None
+    firebase_storage_bucket: Optional[str] = None
+    firebase_messaging_sender_id: Optional[str] = None
+    firebase_app_id: Optional[str] = None
+    
     class Config:
         env_file = ".env"
 
