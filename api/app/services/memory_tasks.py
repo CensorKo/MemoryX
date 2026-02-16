@@ -182,20 +182,12 @@ def search_memory(self, query_data: dict, api_key: str = None):
                 "error": "Missing required fields: user_id and query",
                 "results": []
             }
-        
-        # 使用asyncio运行异步搜索
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            results = loop.run_until_complete(
-                service.search_memories(
-                    user_id=user_id,
-                    query=query,
-                    project_id=project_id,
-                    limit=limit
-                )
-            )
-        finally:
+        # 直接调用同步方法
+        results = service.search_memories_sync(
+            user_id=user_id,
+            query=query,
+            project_id=project_id,
+            limit=limit
             loop.close()
         
         # 格式化结果
