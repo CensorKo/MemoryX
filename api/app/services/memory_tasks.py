@@ -15,7 +15,8 @@ from app.services.memory_service import (
     get_memory_service
 )
 from app.services.classification import quick_classify, ClassificationResult
-from app.services.scoring import ScoringFactors, calculate_memory_score
+from app.services.scoring import ScoringFactors, calculate_memory_score, calculate_recency
+from app.services.memory_service import COLLECTION_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -361,8 +362,13 @@ def cleanup_old_memories(days: int = 365, dry_run: bool = True):
     """
     清理旧记忆任务
     
+    基于以下条件清理记忆：
+    - 创建时间超过指定天数
+    - 分数低于阈值（低价值记忆）
+    - 未被标记为重要或置顶
+    
     Args:
-        days: 清理多少天前的记忆
+        days: 清理多少天前的记忆（默认365天）
         dry_run: 是否为试运行（不实际删除）
     
     Returns:
@@ -370,28 +376,232 @@ def cleanup_old_memories(days: int = 365, dry_run: bool = True):
     """
     logger.info(f"Memory cleanup task started (days={days}, dry_run={dry_run})")
     
-    # TODO: 实现旧记忆清理逻辑
-    # 可以基于分数、访问时间等因素决定删除哪些记忆
-    
-    return {
-        "success": True,
-        "dry_run": dry_run,
-        "message": "Cleanup task placeholder - not implemented yet"
-    }
+    try:
+        service = _get_memory_service()
+        from datetime import datetime, timedelta
+        from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
+        
+        cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        score_threshold = 0.3  # 分数低于此值的记忆将被清理
+        
+        # 构建查询：查找旧记忆（低分数且未标记重要）
+        scroll_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="created_at",
+                    range=Range(lt=cutoff_date)
+                ),
+                FieldCondition(
+                    key="score",
+                    range=Range(lt=score_threshold)
+                )
+            ]
+        )
+        
+        # 分页获取需要清理的记忆
+        memories_to_clean = []
+        next_offset = None
+        
+        while True:
+            results, next_offset = service.client.scroll(
+                collection_name=COLLECTION_NAME,
+                scroll_filter=scroll_filter,
+                limit=100,
+                offset=next_offset
+            )
+            
+            for point in results:
+                payload = point.payload or {}
+                # 排除被标记为重要或置顶的记忆
+                metadata = payload.get("metadata", {})
+                if not metadata.get("is_pinned") and not metadata.get("is_important"):
+                    memories_to_clean.append({
+                        "id": point.id,
+                        "user_id": payload.get("user_id"),
+                        "score": payload.get("score", 0),
+                        "created_at": payload.get("created_at"),
+                        "content_preview": payload.get("content", "")[:50]
+                    })
+            
+            if next_offset is None:
+                break
+        
+        total_found = len(memories_to_clean)
+        deleted_count = 0
+        
+        # 执行删除（如果不是dry_run）
+        if not dry_run and memories_to_clean:
+            # 批量删除，每次100个
+            batch_size = 100
+            for i in range(0, len(memories_to_clean), batch_size):
+                batch = memories_to_clean[i:i + batch_size]
+                point_ids = [m["id"] for m in batch]
+                
+                service.client.delete(
+                    collection_name=COLLECTION_NAME,
+                    points_selector=point_ids
+                )
+                deleted_count += len(batch)
+                logger.info(f"Deleted batch of {len(batch)} memories")
+        
+        result = {
+            "success": True,
+            "dry_run": dry_run,
+            "days_threshold": days,
+            "score_threshold": score_threshold,
+            "total_found": total_found,
+            "deleted_count": deleted_count if not dry_run else 0,
+            "message": f"Found {total_found} old memories to clean up" + 
+                      (f", deleted {deleted_count}" if not dry_run else " (dry run, no deletions)"),
+            "sample": memories_to_clean[:5]  # 返回前5个作为样本
+        }
+        
+        logger.info(f"Memory cleanup task completed: {result['message']}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to cleanup old memories: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "dry_run": dry_run
+        }
 
 
 @shared_task
-def recalculate_memory_scores():
+def recalculate_memory_scores(batch_size: int = 100):
     """
     重新计算所有记忆分数
-    用于定时任务，更新记忆的时效性分数
+    
+    基于时间衰减重新计算所有记忆的分数，用于定时任务更新记忆的时效性分数。
+    
+    Args:
+        batch_size: 每批处理的记忆数量
+    
+    Returns:
+        dict: 重新计算结果
     """
-    logger.info("Recalculating memory scores task started")
+    logger.info(f"Recalculating memory scores task started (batch_size={batch_size})")
     
-    # TODO: 实现分数重新计算逻辑
-    # 可以基于时间衰减重新计算所有记忆的分数
-    
-    return {
-        "success": True,
-        "message": "Score recalculation placeholder - not implemented yet"
-    }
+    try:
+        service = _get_memory_service()
+        from datetime import datetime
+        from qdrant_client.models import ScoredPoint
+        
+        updated_count = 0
+        total_processed = 0
+        errors = []
+        
+        # 分页获取所有记忆
+        next_offset = None
+        
+        while True:
+            results, next_offset = service.client.scroll(
+                collection_name=COLLECTION_NAME,
+                limit=batch_size,
+                offset=next_offset,
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            if not results:
+                break
+            
+            # 准备更新的点
+            points_to_update = []
+            
+            for point in results:
+                try:
+                    payload = point.payload or {}
+                    
+                    # 获取记忆信息
+                    created_at_str = payload.get("created_at")
+                    importance = payload.get("importance", 3)
+                    current_score = payload.get("score", 0.5)
+                    
+                    if not created_at_str:
+                        continue
+                    
+                    # 解析创建时间
+                    try:
+                        created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                    except ValueError:
+                        created_at = datetime.utcnow()
+                    
+                    # 根据重要性确定衰减级别
+                    if importance >= 5:
+                        importance_level = "critical"
+                    elif importance >= 4:
+                        importance_level = "high"
+                    elif importance >= 3:
+                        importance_level = "medium"
+                    elif importance >= 2:
+                        importance_level = "low"
+                    else:
+                        importance_level = "trivial"
+                    
+                    # 计算新的时效性分数
+                    new_recency = calculate_recency(created_at, None, importance_level)
+                    
+                    # 计算新分数（保持重要性权重，更新时效性）
+                    scoring_factors = ScoringFactors(
+                        importance=importance,
+                        recency=new_recency,
+                        frequency=0.1,  # 默认低频率
+                        relevance=0.5,  # 中性相关性
+                        category_boost=1.0,
+                        user_interaction=0.5
+                    )
+                    new_score = calculate_memory_score(scoring_factors)
+                    
+                    # 只有分数变化超过阈值才更新
+                    if abs(new_score - current_score) > 0.01:
+                        # 更新payload中的分数
+                        updated_payload = payload.copy()
+                        updated_payload["score"] = new_score
+                        updated_payload["score_updated_at"] = datetime.utcnow().isoformat()
+                        
+                        points_to_update.append({
+                            "id": point.id,
+                            "payload": updated_payload
+                        })
+                        updated_count += 1
+                    
+                    total_processed += 1
+                    
+                except Exception as item_error:
+                    errors.append(f"Error processing memory {point.id}: {str(item_error)}")
+                    logger.warning(f"Failed to recalculate score for memory {point.id}: {item_error}")
+            
+            # 批量更新
+            if points_to_update:
+                for point_data in points_to_update:
+                    service.client.set_payload(
+                        collection_name=COLLECTION_NAME,
+                        payload=point_data["payload"],
+                        points=[point_data["id"]]
+                    )
+                logger.info(f"Updated {len(points_to_update)} memory scores in batch")
+            
+            if next_offset is None:
+                break
+        
+        result = {
+            "success": True,
+            "total_processed": total_processed,
+            "updated_count": updated_count,
+            "unchanged_count": total_processed - updated_count,
+            "error_count": len(errors),
+            "errors": errors[:10],  # 只返回前10个错误
+            "message": f"Processed {total_processed} memories, updated {updated_count} scores"
+        }
+        
+        logger.info(f"Memory score recalculation completed: {result['message']}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to recalculate memory scores: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e)
+        }
