@@ -167,7 +167,7 @@ class DatabaseService:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute("""
                     SELECT * FROM memory_vectors 
-                    WHERE id = ANY(%s) AND user_id = %s
+                    WHERE id = ANY(%s::uuid[]) AND user_id = %s
                 """, (ids, user_id))
                 rows = cur.fetchall()
                 return {row['id']: self._row_to_memory(row) for row in rows}
