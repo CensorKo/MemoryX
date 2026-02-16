@@ -27,7 +27,6 @@ on:
           - alpha
 
 jobs:
-  # 构建镜像并推送到 ghcr.io
   build:
     name: Build and Push Image
     runs-on: ubuntu-latest
@@ -51,20 +50,16 @@ jobs:
         id: tag
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            # Release: 使用 tag 名称
             TAG="${{ github.event.release.tag_name }}"
           elif [[ "${{ github.ref }}" == "refs/heads/alpha" ]]; then
-            # Alpha 分支: 使用 alpha 标签
             TAG="alpha"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # Main 分支: 使用 latest 标签
             TAG="latest"
           else
-            # 其他情况: 使用分支名
             TAG="${{ github.ref_name }}"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "📌 Image tag: $TAG"
+          echo "Image tag: $TAG"
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -81,20 +76,15 @@ jobs:
       - name: Image digest
         run: echo "Image pushed"
 
-  # 生产环境部署 (31.65)
-  # 触发条件：push 到 main 分支 或 release 发布
   deploy-production:
     name: Deploy to Production (31.65)
     needs: build
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'release' || 
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'release')
+    if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'release')
     steps:
       - name: Trigger Production Webhook
         run: |
-          echo "🚀 Deploying to production (31.65)..."
+          echo "Deploying to production (31.65)..."
           curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=release" \
             -H "Content-Type: application/json" \
             -d '{
@@ -106,21 +96,17 @@ jobs:
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
-          echo "✅ Production deployment triggered"
+          echo "Production deployment triggered"
 
-  # 测试环境部署 (31.66)
-  # 触发条件：push 到 alpha 分支
   deploy-alpha:
     name: Deploy to Test (31.66)
     needs: build
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/alpha') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/alpha') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'alpha')
     steps:
       - name: Trigger Test Webhook
         run: |
-          echo "🧪 Deploying to test environment (31.66)..."
+          echo "Deploying to test environment (31.66)..."
           curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=alpha" \
             -H "Content-Type: application/json" \
             -d '{
@@ -132,4 +118,4 @@ jobs:
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
-          echo "✅ Test deployment triggered"
+          echo "Test deployment triggered"
