@@ -1,10 +1,14 @@
 name: Build and Push API Docker Image
 # Description: Build and push Docker images to Docker Hub and GHCR
-# Trigger: push to main with api/** or Dockerfile.api changes, or workflow_dispatch
+# Trigger: 
+#   - push to alpha → 测试环境镜像 (tag: alpha)
+#   - push to main → 生产环境镜像 (tag: latest)
+#   - release → 带版本号的镜像
+#   - workflow_dispatch 手动触发
 
 on:
   push:
-    branches: [main]
+    branches: [main, alpha]
     paths:
       - 'api/**'
       - 'Dockerfile.api'
@@ -13,7 +17,7 @@ on:
   workflow_dispatch:
 
 env:
-  # Docker Hub (公开镜像) - updated 2026-02-15
+  # Docker Hub (公开镜像)
   DOCKERHUB_REPO: censorkoo/t0ken.ai
   # GitHub Container Registry (备用)
   GHCR_REPO: ghcr.io/t0ken-ai/memoryx-api
@@ -47,6 +51,20 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Determine image tags
+      id: tags
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/alpha" ]]; then
+          echo "extra_tags=type=raw,value=alpha" >> $GITHUB_OUTPUT
+          echo "environment=Test (31.66)" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "extra_tags=type=raw,value=latest,enable=true" >> $GITHUB_OUTPUT
+          echo "environment=Production (31.65)" >> $GITHUB_OUTPUT
+        else
+          echo "extra_tags=" >> $GITHUB_OUTPUT
+          echo "environment=Unknown" >> $GITHUB_OUTPUT
+        fi
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
@@ -60,7 +78,7 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=sha
-          type=raw,value=latest,enable={{is_default_branch}}
+          ${{ steps.tags.outputs.extra_tags }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -76,5 +94,8 @@ jobs:
     - name: Summary
       run: |
         echo "✅ Docker images built and pushed:"
-        echo "  - docker.io/${{ env.DOCKERHUB_REPO }}:latest"
-        echo "  - ghcr.io/${{ env.GHCR_REPO }}:latest"
+        echo "  - docker.io/${{ env.DOCKERHUB_REPO }}"
+        echo "  - ghcr.io/${{ env.GHCR_REPO }}"
+        echo ""
+        echo "📍 Target: ${{ steps.tags.outputs.environment }}"
+        echo "📌 Branch: ${{ github.ref_name }}"

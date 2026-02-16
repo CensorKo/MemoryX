@@ -1,15 +1,16 @@
 name: Build and Deploy via Webhook
 
-# 部署流程：
-# 1. GitHub Actions 构建镜像（海外服务器快）
-# 2. Push 到 ghcr.io
-# 3. 发送 Webhook 通知服务器拉取镜像并部署
+# 部署流程 v2：
+# - push 到 alpha 分支 → 构建并部署到 31.66 测试环境
+# - push 到 main 分支 → 构建并部署到 31.65 生产环境
+# - release 发布 → 部署到 31.65 生产环境（带 tag）
+# - workflow_dispatch 手动触发
 
 on:
   release:
     types: [published]
   push:
-    branches: [main]
+    branches: [main, alpha]
     paths:
       - 'static/**'
       - 'api/**'
@@ -30,6 +31,8 @@ jobs:
   build:
     name: Build and Push Image
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,6 +47,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            # Release: 使用 tag 名称
+            TAG="${{ github.event.release.tag_name }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/alpha" ]]; then
+            # Alpha 分支: 使用 alpha 标签
+            TAG="alpha"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Main 分支: 使用 latest 标签
+            TAG="latest"
+          else
+            # 其他情况: 使用分支名
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📌 Image tag: $TAG"
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -52,58 +74,53 @@ jobs:
           push: true
           tags: |
             ghcr.io/t0ken-ai/memoryx-api:sha-${{ github.sha }}
-            ghcr.io/t0ken-ai/memoryx-api:${{ github.ref_name == 'main' && 'alpha' || github.event.release.tag_name || 'latest' }}
+            ghcr.io/t0ken-ai/memoryx-api:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "Image digest - ${{ steps.build.outputs.digest }}"
+        run: echo "✅ Image pushed: ghcr.io/t0ken-ai/memoryx-api:${{ steps.tag.outputs.tag }}"
 
   # 生产环境部署 (31.65)
-  deploy-release:
+  # 触发条件：push 到 main 分支 或 release 发布
+  deploy-production:
     name: Deploy to Production (31.65)
     needs: build
     runs-on: ubuntu-latest
-    # 安全检查：生产环境只允许 release 事件触发，禁止 push 直接触发
     if: |
       github.event_name == 'release' || 
-      (github.event_name == 'workflow_dispatch' && 
-       github.event.inputs.environment == 'release' &&
-       github.ref == 'refs/heads/main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'release')
     steps:
       - name: Trigger Production Webhook
         run: |
-          echo "🚀 Triggering production deployment (31.65)..."
+          echo "🚀 Deploying to production (31.65)..."
           curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=release" \
             -H "Content-Type: application/json" \
             -d '{
-              "event": "release",
+              "event": "${{ github.event_name }}",
               "repository": "${{ github.repository }}",
               "ref": "${{ github.ref }}",
               "sha": "${{ github.sha }}",
-              "image": "ghcr.io/t0ken-ai/memoryx-api:${{ github.event.release.tag_name }}"
+              "image": "ghcr.io/t0ken-ai/memoryx-api:${{ needs.build.outputs.image_tag }}"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
-          echo "✅ Production webhook triggered"
+          echo "✅ Production deployment triggered"
 
   # 测试环境部署 (31.66)
+  # 触发条件：push 到 alpha 分支
   deploy-alpha:
     name: Deploy to Test (31.66)
     needs: build
     runs-on: ubuntu-latest
-    # 安全检查：测试环境只允许 push 到 main，禁止 release 分支触发，workflow_dispatch 只能是 alpha
     if: |
-      (github.event_name == 'push' && 
-       github.ref == 'refs/heads/main' &&
-       !startsWith(github.ref, 'refs/tags/v')) || 
-      (github.event_name == 'workflow_dispatch' && 
-       github.event.inputs.environment == 'alpha' &&
-       github.ref == 'refs/heads/main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/alpha') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'alpha')
     steps:
       - name: Trigger Test Webhook
         run: |
-          echo "🧪 Triggering test deployment (31.66)..."
+          echo "🧪 Deploying to test environment (31.66)..."
           curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_KEY }}&type=alpha" \
             -H "Content-Type: application/json" \
             -d '{
@@ -111,8 +128,8 @@ jobs:
               "repository": "${{ github.repository }}",
               "ref": "${{ github.ref }}",
               "sha": "${{ github.sha }}",
-              "image": "ghcr.io/t0ken-ai/memoryx-api:sha-${{ github.sha }}"
+              "image": "ghcr.io/t0ken-ai/memoryx-api:alpha"
             }' \
             -w "\nHTTP Status: %{http_code}\n" \
             -s
-          echo "✅ Test webhook triggered"
+          echo "✅ Test deployment triggered"
