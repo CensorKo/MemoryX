@@ -5,6 +5,7 @@ MemoryX Client - 核心客户端
 import json
 import hashlib
 import platform
+import socket
 import uuid
 from typing import Optional, List, Dict, Any
 from urllib.request import Request, urlopen
