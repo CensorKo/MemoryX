@@ -79,7 +79,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "✅ Image pushed: ghcr.io/t0ken-ai/memoryx-api:${{ steps.tag.outputs.tag }}"
+        run: echo "Image pushed"
 
   # 生产环境部署 (31.65)
   # 触发条件：push 到 main 分支 或 release 发布
