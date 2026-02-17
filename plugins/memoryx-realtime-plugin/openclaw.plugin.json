@@ -1,7 +1,7 @@
 {
-  "id": "memoryx-realtime-plugin",
+  "id": "@t0ken.ai/memoryx-openclaw-plugin",
   "name": "MemoryX Real-time Plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Real-time memory capture and recall for OpenClaw",
   "entry": "./dist/index.js",
   "kind": "memory",
