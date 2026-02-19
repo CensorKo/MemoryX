@@ -12,6 +12,7 @@ from app.core.database import (
     get_or_create_quota, SubscriptionTier, QUOTA_LIMITS
 )
 from app.services.memory_core.graph_memory_service import graph_memory_service
+from app.services.memory_queue import add_memory_task
 from app.core.celery_config import celery_app
 from app.core.config import get_settings
 
@@ -114,9 +115,7 @@ async def filter_sensitive_with_llm(content: str) -> SensitiveFilterResult:
 
 
 def process_conversation_task(conversation_data: dict):
-    """后台任务：处理对话提取记忆"""
-    import asyncio
-    
+    """后台任务：处理对话提取记忆 - 通过队列异步处理"""
     try:
         user_id = conversation_data["user_id"]
         messages = conversation_data["messages"]
@@ -126,12 +125,13 @@ def process_conversation_task(conversation_data: dict):
             for m in messages
         ])
         
+        import asyncio
         filter_result = asyncio.run(filter_sensitive_with_llm(combined_content))
         
         if filter_result.has_sensitive:
             logger.info(f"LLM filtered {filter_result.sensitive_count} sensitive items for user {user_id}")
         
-        result = asyncio.run(graph_memory_service.add_memory(
+        task = add_memory_task.delay(
             user_id=user_id,
             content=filter_result.filtered_content,
             metadata={
@@ -142,10 +142,10 @@ def process_conversation_task(conversation_data: dict):
                 "source": "conversation_flush",
                 "project_id": conversation_data.get("project_id", "default")
             }
-        ))
+        )
         
-        logger.info(f"Extracted memory from conversation for user {user_id}: {result.get('id')}")
-        return result
+        logger.info(f"Queued memory task for user {user_id}: {task.id}")
+        return {"task_id": task.id, "status": "queued"}
         
     except Exception as e:
         logger.error(f"Failed to process conversation: {e}")
@@ -252,27 +252,23 @@ async def realtime_message(
     
     filter_result = await filter_sensitive_with_llm(message.content)
     
-    try:
-        result = await graph_memory_service.add_memory(
-            user_id=str(user_id),
-            content=filter_result.filtered_content,
-            metadata={
-                "role": message.role,
-                "tokens": message.tokens,
-                "source": "realtime",
-                "has_sensitive": filter_result.has_sensitive
-            }
-        )
-        
-        quota.increment_memories_created()
-        db.commit()
-        
-        return {
-            "status": "ok",
-            "memory_id": result.get("id"),
-            "has_sensitive": filter_result.has_sensitive,
-            "remaining_quota": remaining - 1
+    task = add_memory_task.delay(
+        user_id=str(user_id),
+        content=filter_result.filtered_content,
+        metadata={
+            "role": message.role,
+            "tokens": message.tokens,
+            "source": "realtime",
+            "has_sensitive": filter_result.has_sensitive
         }
-    except Exception as e:
-        logger.error(f"Realtime processing failed: {e}")
-        raise HTTPException(status_code=500, detail="Processing failed")
+    )
+    
+    quota.increment_memories_created()
+    db.commit()
+    
+    return {
+        "status": "queued",
+        "task_id": task.id,
+        "has_sensitive": filter_result.has_sensitive,
+        "remaining_quota": remaining - 1
+    }

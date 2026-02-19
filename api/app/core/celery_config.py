@@ -7,7 +7,7 @@ celery_app = Celery(
     "openmemoryx",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.services.memory_tasks"]
+    include=["app.services.memory_queue"]
 )
 
 celery_app.conf.update(
@@ -38,7 +38,10 @@ celery_app.conf.update(
     # 队列配置
     task_default_queue="memory",
     task_routes={
-        "app.services.memory_tasks.process_memory": {"queue": "memory"},
+        "app.services.memory_queue.add_memory_task": {"queue": "memory"},
+        "app.services.memory_queue.batch_add_memory_task": {"queue": "memory"},
+        "app.services.memory_queue.update_memory_task": {"queue": "memory"},
+        "app.services.memory_queue.delete_memory_task": {"queue": "memory"},
     },
 )
 

@@ -12,6 +12,10 @@ from app.core.database import (
     get_or_create_quota, SubscriptionTier, QUOTA_LIMITS, PRICING
 )
 from app.services.memory_core.graph_memory_service import graph_memory_service
+from app.services.memory_queue import (
+    add_memory_task,
+    batch_add_memory_task
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,12 @@ async def create_memory(
     user_data: tuple = Depends(get_current_user_with_quota),
     db: Session = Depends(get_db)
 ):
+    """
+    添加记忆 - 异步队列处理
+    
+    记忆添加操作通过 Celery 队列异步处理，防止 LLM 被打爆。
+    返回 task_id 可用于查询处理状态。
+    """
     user_id, tier, quota, api_key = user_data
     
     can_create, remaining = quota.can_create_memory(tier)
@@ -100,28 +110,25 @@ async def create_memory(
             detail=f"Monthly memory limit reached ({QUOTA_LIMITS[tier]['memories_per_month']}). Please upgrade to Pro for unlimited memories."
         )
     
-    try:
-        result = await graph_memory_service.add_memory(
-            user_id=str(user_id),
-            content=memory.content,
-            metadata=memory.metadata
-        )
-        
-        quota.increment_memories_created()
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": "Memory created successfully",
-            "data": result,
-            "remaining_quota": remaining - 1
-        }
-    except Exception as e:
-        logger.error(f"Create memory failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to create memory: {str(e)}"
-        )
+    metadata = memory.metadata or {}
+    metadata["project_id"] = memory.project_id
+    
+    task = add_memory_task.delay(
+        user_id=str(user_id),
+        content=memory.content,
+        metadata=metadata
+    )
+    
+    quota.increment_memories_created()
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Memory task queued for processing",
+        "task_id": task.id,
+        "status": "pending",
+        "remaining_quota": remaining - 1
+    }
 
 
 @router.post("/memories/batch", response_model=dict)
@@ -130,6 +137,12 @@ async def batch_create_memories(
     user_data: tuple = Depends(get_current_user_with_quota),
     db: Session = Depends(get_db)
 ):
+    """
+    批量添加记忆 - 异步队列处理
+    
+    批量记忆添加操作通过 Celery 队列异步处理。
+    返回 task_id 可用于查询处理状态。
+    """
     user_id, tier, quota, api_key = user_data
     
     if len(batch.memories) == 0:
@@ -155,30 +168,59 @@ async def batch_create_memories(
             )
         batch.memories = batch.memories[:allowed]
     
-    results = []
-    for item in batch.memories:
-        try:
-            result = await graph_memory_service.add_memory(
-                user_id=str(user_id),
-                content=item.content,
-                metadata=item.metadata
-            )
-            results.append(result)
-        except Exception as e:
-            logger.error(f"Batch create memory failed: {e}")
-            continue
+    contents = [item.content for item in batch.memories]
+    metadatas = [item.metadata or {} for item in batch.memories]
     
-    quota.increment_memories_created(len(results))
+    for i, m in enumerate(metadatas):
+        m["project_id"] = batch.project_id
+    
+    task = batch_add_memory_task.delay(
+        user_id=str(user_id),
+        contents=contents,
+        metadatas=metadatas
+    )
+    
+    quota.increment_memories_created(len(batch.memories))
     quota.increment_batch_uploads()
     db.commit()
     
     return {
         "success": True,
-        "message": f"Batch of {len(results)} memories created successfully",
-        "data": results,
-        "processed_count": len(results),
-        "failed_count": len(batch.memories) - len(results)
+        "message": f"Batch of {len(batch.memories)} memories queued for processing",
+        "task_id": task.id,
+        "status": "pending",
+        "queued_count": len(batch.memories),
+        "remaining_quota": remaining - len(batch.memories)
     }
+
+
+@router.get("/memories/task/{task_id}", response_model=dict)
+async def get_task_status(
+    task_id: str,
+    user_data: tuple = Depends(get_current_user_with_quota)
+):
+    """
+    查询任务状态
+    
+    用于查询异步任务（添加/更新/删除记忆）的处理状态。
+    """
+    from celery.result import AsyncResult
+    
+    task_result = AsyncResult(task_id)
+    
+    response = {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": None
+    }
+    
+    if task_result.ready():
+        if task_result.successful():
+            response["result"] = task_result.result
+        else:
+            response["error"] = str(task_result.result)
+    
+    return response
 
 
 @router.post("/memories/search", response_model=dict)
