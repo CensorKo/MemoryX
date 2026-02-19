@@ -1,0 +1,29 @@
+services:
+  memoryx-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://memoryx:memoryx123@192.168.31.66:5432/memoryx
+      - REDIS_URL=redis://192.168.31.66:6379/0
+      - VALKEY_HOST=192.168.31.66
+      - VALKEY_PORT=6379
+      - QDRANT_HOST=192.168.31.66
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION=memoryx
+      - NEO4J_URI=bolt://192.168.31.66:7687
+      - NEO4J_HOST=192.168.31.66
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=memoryx123
+      - BASE_URL=http://192.168.31.65:11436
+      - OLLAMA_BASE_URL=http://192.168.31.65:11436
+      - QWEN_BASE_URL=http://192.168.31.65:11436
+      - EMBED_BASE_URL=http://192.168.31.65:11436
+      - LLM_MODEL=llama3.1-8b
+      - QWEN_MODEL=qwen3-14b-sft
+      - EMBED_MODEL=bge-m3
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+    restart: unless-stopped
+    network_mode: bridge

@@ -19,14 +19,12 @@ from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from app.core.database import APIKey
 from app.routers import auth, api_keys, memories, projects, stats
+from app.routers import conversations
 from app.routers.otp import router as otp_router
 from app.routers.firebase_auth import router as firebase_router
 from app.routers.agent_autoregister import router as agent_router
 from app.routers.agent_claim import router as claim_router
 from app.core.celery_config import celery_app
-
-# 导入 MemoryService 用于 lifespan 管理
-from app.services.memory_service import init_memory_service, get_memory_service
 
 # 配置日志
 logging.basicConfig(
@@ -45,34 +43,10 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     """
     应用生命周期管理
-    启动时初始化 MemoryService，关闭时清理资源
     """
-    # 启动时
     logger.info("Starting up MemoryX API...")
-    
-    try:
-        # 初始化 MemoryService
-        memory_service = init_memory_service(
-            qdrant_url=os.getenv("QDRANT_URL", "http://localhost:6333"),
-            api_key=os.getenv("QDRANT_API_KEY")
-        )
-        logger.info("MemoryService initialized successfully")
-    except Exception as e:
-        logger.warning(f"MemoryService initialization failed: {e}")
-        logger.warning("Memory operations may not work correctly")
-    
     yield
-    
-    # 关闭时
     logger.info("Shutting down MemoryX API...")
-    
-    try:
-        # 关闭 MemoryService
-        service = get_memory_service()
-        service.close()
-        logger.info("MemoryService closed successfully")
-    except Exception as e:
-        logger.warning(f"Error closing MemoryService: {e}")
 
 
 app = FastAPI(
@@ -96,6 +70,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(api_keys.router, prefix="/api")
 app.include_router(memories.router, prefix="/api")
+app.include_router(conversations.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(otp_router, prefix="/api")
@@ -191,8 +166,11 @@ def health_check_detailed():
     
     # 检查 Qdrant
     try:
-        service = get_memory_service()
-        collections = service.client.get_collections()
+        from qdrant_client import QdrantClient
+        qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+        qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
+        client = QdrantClient(host=qdrant_host, port=qdrant_port)
+        collections = client.get_collections()
         services_status["qdrant"] = "ok"
     except Exception as e:
         services_status["qdrant"] = f"error: {str(e)}"
