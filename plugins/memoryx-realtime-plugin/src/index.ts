@@ -415,7 +415,7 @@ class MemoryXPlugin {
 let plugin: MemoryXPlugin;
 
 export default {
-    id: "@t0ken.ai/memoryx-openclaw-plugin",
+    id: "memoryx-openclaw-plugin",
     name: "MemoryX Real-time Plugin",
     version: "1.0.4",
     description: "Real-time memory capture and recall for OpenClaw",

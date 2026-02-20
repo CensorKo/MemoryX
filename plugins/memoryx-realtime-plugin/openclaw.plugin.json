@@ -1,16 +1,18 @@
 {
-  "id": "@t0ken.ai/memoryx-openclaw-plugin",
+  "id": "memoryx-openclaw-plugin",
   "name": "MemoryX Real-time Plugin",
   "version": "1.0.4",
   "description": "Real-time memory capture and recall for OpenClaw",
-  "entry": "./dist/index.js",
   "kind": "memory",
+  "main": "./dist/index.js",
   "configSchema": {
     "type": "object",
     "properties": {
       "apiBaseUrl": {
-        "type": "string"
+        "type": "string",
+        "description": "MemoryX API base URL (default: https://t0ken.ai/api)"
       }
-    }
+    },
+    "additionalProperties": false
   }
 }
