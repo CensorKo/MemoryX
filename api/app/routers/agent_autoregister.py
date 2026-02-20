@@ -137,8 +137,9 @@ async def get_machine_stats(
 ):
     """获取当前机器上的 Agent 统计信息"""
     
-    # 使用 key_hash 查询
-    key_record = db.query(APIKey).filter(APIKey.key_hash == api_key).first()
+    import hashlib
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    key_record = db.query(APIKey).filter(APIKey.key_hash == key_hash).first()
     if not key_record:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
