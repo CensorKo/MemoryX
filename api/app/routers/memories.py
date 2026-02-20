@@ -306,6 +306,38 @@ async def search_graph(
         )
 
 
+@router.delete("/memories/{memory_id}", response_model=dict)
+async def delete_memory(
+    memory_id: str,
+    user_data: tuple = Depends(get_current_user_with_quota),
+    db: Session = Depends(get_db)
+):
+    user_id, tier, quota, api_key = user_data
+    
+    try:
+        success = graph_memory_service.delete_from_qdrant(str(user_id), memory_id)
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Memory deleted successfully",
+                "memory_id": memory_id
+            }
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="Memory not found or deletion failed"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete memory failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete memory: {str(e)}"
+        )
+
+
 @router.get("/quota", response_model=dict)
 async def get_quota_info(
     user_data: tuple = Depends(get_current_user_with_quota)
