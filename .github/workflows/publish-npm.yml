@@ -1,0 +1,44 @@
+# Publish to NPM - 发布 OpenClaw 插件到 npm
+#
+# 用途：发布 MemoryX OpenClaw Plugin 到 npm registry
+# 
+# 触发条件：
+#   - push tag npm-v* (如 npm-v1.0.2)
+#
+# 发布包名：@t0ken.ai/memoryx-openclaw-plugin
+# npm 地址：https://www.npmjs.com/package/@t0ken.ai/memoryx-openclaw-plugin
+
+name: Publish to NPM
+
+on:
+  push:
+    tags:
+      - 'npm-v*'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      working-directory: plugins/memoryx-realtime-plugin
+      run: npm ci
+      
+    - name: Build
+      working-directory: plugins/memoryx-realtime-plugin
+      run: npm run build
+      
+    - name: Publish to NPM
+      working-directory: plugins/memoryx-realtime-plugin
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
