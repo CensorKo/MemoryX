@@ -167,32 +167,50 @@ class SQLiteStorage {
         }
     }
     
-    static async addPendingMessage(conversationId: string, role: string, content: string): Promise<number> {
+    static async addPendingConversation(conversationId: string, messages: Message[]): Promise<number> {
         const db = await getDb();
         const result = db.prepare(`
             INSERT INTO pending_messages (conversation_id, role, content, timestamp)
             VALUES (?, ?, ?, ?)
-        `).run(conversationId, role, content, Date.now());
-        return result.lastInsertRowid as number;
+        `);
+        let lastId = 0;
+        for (const msg of messages) {
+            const r = result.run(conversationId, msg.role, msg.content, msg.timestamp);
+            lastId = r.lastInsertRowid as number;
+        }
+        return lastId;
     }
     
-    static async getPendingMessages(limit: number = 100): Promise<PendingMessage[]> {
+    static async getPendingMessagesGrouped(): Promise<Map<string, PendingMessage[]>> {
         const db = await getDb();
-        return db.prepare(`
+        const rows = db.prepare(`
             SELECT * FROM pending_messages 
-            ORDER BY created_at ASC 
-            LIMIT ?
-        `).all(limit) as PendingMessage[];
+            ORDER BY conversation_id, timestamp ASC
+        `).all() as PendingMessage[];
+        
+        const grouped = new Map<string, PendingMessage[]>();
+        for (const row of rows) {
+            if (!grouped.has(row.conversation_id)) {
+                grouped.set(row.conversation_id, []);
+            }
+            grouped.get(row.conversation_id)!.push(row);
+        }
+        return grouped;
     }
     
-    static async deletePendingMessage(id: number): Promise<void> {
+    static async deletePendingMessagesByConversation(conversationId: string): Promise<void> {
         const db = await getDb();
-        db.prepare("DELETE FROM pending_messages WHERE id = ?").run(id);
+        db.prepare("DELETE FROM pending_messages WHERE conversation_id = ?").run(conversationId);
     }
     
     static async incrementRetryCount(id: number): Promise<void> {
         const db = await getDb();
         db.prepare("UPDATE pending_messages SET retry_count = retry_count + 1 WHERE id = ?").run(id);
+    }
+    
+    static async incrementRetryByConversation(conversationId: string): Promise<void> {
+        const db = await getDb();
+        db.prepare("UPDATE pending_messages SET retry_count = retry_count + 1 WHERE conversation_id = ?").run(conversationId);
     }
     
     static async clearOldPendingMessages(maxAge: number = 7 * 24 * 60 * 60): Promise<void> {
@@ -234,6 +252,12 @@ class SQLiteStorage {
         const db = await getDb();
         const cutoff = Math.floor(Date.now() / 1000) - maxAge;
         db.prepare("DELETE FROM temp_messages WHERE created_at < ?").run(cutoff);
+    }
+    
+    static async getMaxRetryCount(): Promise<number> {
+        const db = await getDb();
+        const row = db.prepare("SELECT MAX(retry_count) as max FROM pending_messages").get() as any;
+        return row?.max || 0;
     }
 }
 
@@ -366,6 +390,8 @@ class MemoryXPlugin {
             log(`Config loaded, apiKey: ${this.config.apiKey ? 'present' : 'missing'}`);
             this.startFlushTimer();
             this.startPendingRetryTimer();
+            SQLiteStorage.clearOldTempMessages().catch(() => {});
+            SQLiteStorage.clearOldPendingMessages().catch(() => {});
             this.retryPendingMessages();
             
             if (!this.config.apiKey) {
@@ -456,15 +482,18 @@ class MemoryXPlugin {
         if (!this.config.apiKey) return;
         
         try {
-            const pending = await SQLiteStorage.getPendingMessages(50);
-            if (pending.length === 0) return;
+            await SQLiteStorage.clearOldPendingMessages();
             
-            log(`Retrying ${pending.length} pending messages`);
+            const grouped = await SQLiteStorage.getPendingMessagesGrouped();
+            if (grouped.size === 0) return;
             
-            for (const msg of pending) {
-                if (msg.retry_count >= this.MAX_RETRY_COUNT) {
-                    log(`Deleting message ${msg.id}: max retries exceeded`);
-                    await SQLiteStorage.deletePendingMessage(msg.id);
+            log(`Retrying ${grouped.size} pending conversations`);
+            
+            for (const [conversationId, messages] of grouped) {
+                const maxRetry = Math.max(...messages.map(m => m.retry_count));
+                if (maxRetry >= this.MAX_RETRY_COUNT) {
+                    log(`Deleting conversation ${conversationId}: max retries exceeded`);
+                    await SQLiteStorage.deletePendingMessagesByConversation(conversationId);
                     continue;
                 }
                 
@@ -476,26 +505,26 @@ class MemoryXPlugin {
                             "X-API-Key": this.config.apiKey
                         },
                         body: JSON.stringify({
-                            conversation_id: msg.conversation_id,
-                            messages: [{
-                                role: msg.role,
-                                content: msg.content,
-                                timestamp: msg.timestamp,
+                            conversation_id: conversationId,
+                            messages: messages.map(m => ({
+                                role: m.role,
+                                content: m.content,
+                                timestamp: m.timestamp,
                                 tokens: 0
-                            }]
+                            }))
                         })
                     });
                     
                     if (response.ok) {
-                        await SQLiteStorage.deletePendingMessage(msg.id);
-                        log(`Sent pending message ${msg.id}`);
+                        await SQLiteStorage.deletePendingMessagesByConversation(conversationId);
+                        log(`Sent pending conversation ${conversationId} (${messages.length} messages)`);
                     } else {
-                        await SQLiteStorage.incrementRetryCount(msg.id);
-                        log(`Failed to send pending message ${msg.id}: ${response.status}`);
+                        await SQLiteStorage.incrementRetryByConversation(conversationId);
+                        log(`Failed to send conversation ${conversationId}: ${response.status}`);
                     }
                 } catch (e) {
-                    await SQLiteStorage.incrementRetryCount(msg.id);
-                    log(`Error sending pending message ${msg.id}: ${e}`);
+                    await SQLiteStorage.incrementRetryByConversation(conversationId);
+                    log(`Error sending conversation ${conversationId}: ${e}`);
                 }
             }
         } catch (e) {
@@ -506,10 +535,8 @@ class MemoryXPlugin {
     private async flushConversation(): Promise<void> {
         if (!this.config.apiKey) {
             const data = this.buffer.forceFlush();
-            if (data) {
-                for (const msg of data.messages) {
-                    await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
-                }
+            if (data && data.messages.length > 0) {
+                await SQLiteStorage.addPendingConversation(data.conversation_id, data.messages);
                 log(`Cached ${data.messages.length} messages (no API key)`);
             }
             return;
@@ -539,9 +566,7 @@ class MemoryXPlugin {
                     log(`Flush failed: ${JSON.stringify(errorData)}`);
                 }
                 
-                for (const msg of data.messages) {
-                    await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
-                }
+                await SQLiteStorage.addPendingConversation(data.conversation_id, data.messages);
                 log(`Cached ${data.messages.length} messages (API error)`);
             } else {
                 const result: any = await response.json();
@@ -550,9 +575,7 @@ class MemoryXPlugin {
         } catch (e) {
             log(`Flush error: ${e}`);
             
-            for (const msg of data.messages) {
-                await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
-            }
+            await SQLiteStorage.addPendingConversation(data.conversation_id, data.messages);
             log(`Cached ${data.messages.length} messages (network error)`);
         }
     }
