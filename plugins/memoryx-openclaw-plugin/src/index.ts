@@ -160,7 +160,7 @@ class ConversationBuffer {
     private conversationId: string = "";
     private startedAt: number = Date.now();
     private lastActivityAt: number = Date.now();
-    private encoder: Tiktoken;
+    private encoder: Tiktoken | null = null;
     
     private readonly ROUND_THRESHOLD = 2;
     private readonly TIMEOUT_MS = 30 * 60 * 1000;
@@ -168,7 +168,13 @@ class ConversationBuffer {
     
     constructor() {
         this.conversationId = this.generateId();
-        this.encoder = getEncoding("cl100k_base");
+    }
+    
+    private getEncoder(): Tiktoken {
+        if (!this.encoder) {
+            this.encoder = getEncoding("cl100k_base");
+        }
+        return this.encoder;
     }
     
     private generateId(): string {
@@ -176,7 +182,7 @@ class ConversationBuffer {
     }
     
     private countTokens(text: string): number {
-        return this.encoder.encode(text).length;
+        return this.getEncoder().encode(text).length;
     }
     
     addMessage(role: string, content: string): boolean {
