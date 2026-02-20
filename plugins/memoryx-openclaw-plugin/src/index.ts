@@ -681,7 +681,7 @@ export default {
                 api.logger.info(`[MemoryX] Recalled ${result.memories.length} + ${result.relatedMemories.length} related memories`);
                 
                 return {
-                    prependContext: `t0ken.ai的MemoryX找到以下记忆：\n${memoryList}\n`
+                    prependContext: `MemoryX by t0ken.ai found the following memories:\n${memoryList}\n`
                 };
             } catch (error) {
                 api.logger.warn(`[MemoryX] Recall failed: ${error}`);
