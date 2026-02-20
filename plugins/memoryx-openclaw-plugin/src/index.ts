@@ -185,7 +185,7 @@ class SQLiteStorage {
         const db = await getDb();
         const rows = db.prepare(`
             SELECT * FROM pending_messages 
-            ORDER BY conversation_id, timestamp ASC
+            ORDER BY conversation_id, id ASC
         `).all() as PendingMessage[];
         
         const grouped = new Map<string, PendingMessage[]>();
@@ -233,7 +233,7 @@ class SQLiteStorage {
         const rows = db.prepare(`
             SELECT role, content, timestamp FROM temp_messages 
             WHERE conversation_id = ? 
-            ORDER BY timestamp ASC
+            ORDER BY id ASC
         `).all(conversationId);
         return rows.map((r: any) => ({
             role: r.role,
