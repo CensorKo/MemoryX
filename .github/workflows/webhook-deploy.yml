@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       deploy_type:
-        description: 'Deployment type (alpha/release/static)'
+        description: 'Deployment type (alpha/release)'
         required: true
         type: string
       image:
