@@ -1,6 +1,6 @@
 {
   "name": "memoryx-openclaw-plugin",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MemoryX real-time memory capture and recall plugin for OpenClaw",
   "type": "module",
   "author": "MemoryX Team",
@@ -12,8 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepare": "npm run build"
+    "build": "tsc"
   },
   "keywords": [
     "openclaw",
