@@ -15,7 +15,7 @@ class ConversationBuffer {
     conversationId = "";
     startedAt = Date.now();
     lastActivityAt = Date.now();
-    TOKEN_THRESHOLD = 2000;
+    TOKEN_THRESHOLD = 200;
     TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
     MAX_TOKENS_PER_MESSAGE = 8000;
     constructor() {
