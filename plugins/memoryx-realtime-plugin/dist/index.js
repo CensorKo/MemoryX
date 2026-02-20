@@ -19,6 +19,7 @@ class ConversationBuffer {
     lastActivityAt = Date.now();
     encoder;
     TOKEN_THRESHOLD = 200;
+    MIN_MESSAGES = 2;
     TIMEOUT_MS = 30 * 60 * 1000;
     MAX_TOKENS_PER_MESSAGE = 8000;
     constructor() {
@@ -48,13 +49,13 @@ class ConversationBuffer {
         this.messages.push(message);
         this.tokenCount += tokens;
         this.lastActivityAt = Date.now();
-        return this.tokenCount >= this.TOKEN_THRESHOLD;
+        return this.tokenCount >= this.TOKEN_THRESHOLD && this.messages.length >= this.MIN_MESSAGES;
     }
     shouldFlush() {
         if (this.messages.length === 0) {
             return false;
         }
-        if (this.tokenCount >= this.TOKEN_THRESHOLD) {
+        if (this.tokenCount >= this.TOKEN_THRESHOLD && this.messages.length >= this.MIN_MESSAGES) {
             return true;
         }
         const elapsed = Date.now() - this.lastActivityAt;

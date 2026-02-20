@@ -59,6 +59,7 @@ class ConversationBuffer {
     private encoder: Tiktoken;
     
     private readonly TOKEN_THRESHOLD = 200;
+    private readonly MIN_MESSAGES = 2;
     private readonly TIMEOUT_MS = 30 * 60 * 1000;
     private readonly MAX_TOKENS_PER_MESSAGE = 8000;
     
@@ -96,7 +97,7 @@ class ConversationBuffer {
         this.tokenCount += tokens;
         this.lastActivityAt = Date.now();
         
-        return this.tokenCount >= this.TOKEN_THRESHOLD;
+        return this.tokenCount >= this.TOKEN_THRESHOLD && this.messages.length >= this.MIN_MESSAGES;
     }
     
     shouldFlush(): boolean {
@@ -104,7 +105,7 @@ class ConversationBuffer {
             return false;
         }
         
-        if (this.tokenCount >= this.TOKEN_THRESHOLD) {
+        if (this.tokenCount >= this.TOKEN_THRESHOLD && this.messages.length >= this.MIN_MESSAGES) {
             return true;
         }
         
