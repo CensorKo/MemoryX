@@ -63,37 +63,154 @@ interface RecallResult {
     upgradeHint?: string;
 }
 
-class JsonStorage {
-    private static configPath: string | null = null;
+interface PendingMessage {
+    id: number;
+    conversation_id: string;
+    role: string;
+    content: string;
+    timestamp: number;
+    retry_count: number;
+    created_at: number;
+}
+
+let dbPromise: Promise<any> | null = null;
+
+async function getDb(): Promise<any> {
+    if (dbPromise) return dbPromise;
     
-    private static getPath(): string {
-        if (!this.configPath) {
-            ensureDir();
-            this.configPath = path.join(PLUGIN_DIR, "config.json");
-        }
-        return this.configPath;
-    }
+    dbPromise = (async () => {
+        ensureDir();
+        const Database = (await import("better-sqlite3")).default;
+        const dbPath = path.join(PLUGIN_DIR, "memoryx.db");
+        const db = new Database(dbPath);
+        
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS config (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            );
+            
+            CREATE TABLE IF NOT EXISTS pending_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                retry_count INTEGER DEFAULT 0,
+                created_at INTEGER DEFAULT (strftime('%s', 'now'))
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_pending_conversation ON pending_messages(conversation_id);
+            CREATE INDEX IF NOT EXISTS idx_pending_created ON pending_messages(created_at);
+            
+            CREATE TABLE IF NOT EXISTS temp_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                created_at INTEGER DEFAULT (strftime('%s', 'now'))
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_temp_conversation ON temp_messages(conversation_id);
+        `);
+        
+        return db;
+    })();
     
-    static load(): MemoryXConfig | null {
+    return dbPromise;
+}
+
+class SQLiteStorage {
+    static async loadConfig(): Promise<MemoryXConfig | null> {
         try {
-            const filePath = this.getPath();
-            if (fs.existsSync(filePath)) {
-                const data = fs.readFileSync(filePath, "utf-8");
-                return JSON.parse(data);
+            const db = await getDb();
+            const row = db.prepare("SELECT value FROM config WHERE key = 'config'").get();
+            if (row) {
+                return JSON.parse(row.value);
             }
         } catch (e) {
-            console.warn("[MemoryX] Failed to load config:", e);
+            log(`Failed to load config: ${e}`);
         }
         return null;
     }
     
-    static save(config: MemoryXConfig): void {
+    static async saveConfig(config: MemoryXConfig): Promise<void> {
         try {
-            const filePath = this.getPath();
-            fs.writeFileSync(filePath, JSON.stringify(config, null, 2), "utf-8");
+            const db = await getDb();
+            db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('config', ?)").run(JSON.stringify(config));
         } catch (e) {
-            console.warn("[MemoryX] Failed to save config:", e);
+            log(`Failed to save config: ${e}`);
         }
+    }
+    
+    static async addPendingMessage(conversationId: string, role: string, content: string): Promise<number> {
+        const db = await getDb();
+        const result = db.prepare(`
+            INSERT INTO pending_messages (conversation_id, role, content, timestamp)
+            VALUES (?, ?, ?, ?)
+        `).run(conversationId, role, content, Date.now());
+        return result.lastInsertRowid as number;
+    }
+    
+    static async getPendingMessages(limit: number = 100): Promise<PendingMessage[]> {
+        const db = await getDb();
+        return db.prepare(`
+            SELECT * FROM pending_messages 
+            ORDER BY created_at ASC 
+            LIMIT ?
+        `).all(limit) as PendingMessage[];
+    }
+    
+    static async deletePendingMessage(id: number): Promise<void> {
+        const db = await getDb();
+        db.prepare("DELETE FROM pending_messages WHERE id = ?").run(id);
+    }
+    
+    static async incrementRetryCount(id: number): Promise<void> {
+        const db = await getDb();
+        db.prepare("UPDATE pending_messages SET retry_count = retry_count + 1 WHERE id = ?").run(id);
+    }
+    
+    static async clearOldPendingMessages(maxAge: number = 7 * 24 * 60 * 60): Promise<void> {
+        const db = await getDb();
+        const cutoff = Math.floor(Date.now() / 1000) - maxAge;
+        db.prepare("DELETE FROM pending_messages WHERE created_at < ?").run(cutoff);
+    }
+    
+    static async addTempMessage(conversationId: string, role: string, content: string): Promise<number> {
+        const db = await getDb();
+        const result = db.prepare(`
+            INSERT INTO temp_messages (conversation_id, role, content, timestamp)
+            VALUES (?, ?, ?, ?)
+        `).run(conversationId, role, content, Date.now());
+        return result.lastInsertRowid as number;
+    }
+    
+    static async getTempMessages(conversationId: string): Promise<Message[]> {
+        const db = await getDb();
+        const rows = db.prepare(`
+            SELECT role, content, timestamp FROM temp_messages 
+            WHERE conversation_id = ? 
+            ORDER BY timestamp ASC
+        `).all(conversationId);
+        return rows.map((r: any) => ({
+            role: r.role,
+            content: r.content,
+            tokens: 0,
+            timestamp: r.timestamp
+        }));
+    }
+    
+    static async clearTempMessages(conversationId: string): Promise<void> {
+        const db = await getDb();
+        db.prepare("DELETE FROM temp_messages WHERE conversation_id = ?").run(conversationId);
+    }
+    
+    static async clearOldTempMessages(maxAge: number = 24 * 60 * 60): Promise<void> {
+        const db = await getDb();
+        const cutoff = Math.floor(Date.now() / 1000) - maxAge;
+        db.prepare("DELETE FROM temp_messages WHERE created_at < ?").run(cutoff);
     }
 }
 
@@ -114,6 +231,10 @@ class ConversationBuffer {
     
     private generateId(): string {
         return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    getConversationId(): string {
+        return this.conversationId;
     }
     
     addMessage(role: string, content: string): boolean {
@@ -198,7 +319,10 @@ class MemoryXPlugin {
     
     private buffer: ConversationBuffer = new ConversationBuffer();
     private flushTimer: any = null;
+    private pendingRetryTimer: any = null;
     private readonly FLUSH_CHECK_INTERVAL = 30000;
+    private readonly PENDING_RETRY_INTERVAL = 60000;
+    private readonly MAX_RETRY_COUNT = 5;
     private pluginConfig: PluginConfig | null = null;
     private initialized: boolean = false;
     
@@ -215,22 +339,25 @@ class MemoryXPlugin {
         this.initialized = true;
         
         log("Async init started");
-        this.loadConfig();
-        log(`Config loaded, apiKey: ${this.config.apiKey ? 'present' : 'missing'}`);
-        this.startFlushTimer();
-        
-        if (!this.config.apiKey) {
-            log("Starting auto-register");
-            this.autoRegister().catch(e => log(`Auto-register failed: ${e}`));
-        }
+        this.loadConfig().then(() => {
+            log(`Config loaded, apiKey: ${this.config.apiKey ? 'present' : 'missing'}`);
+            this.startFlushTimer();
+            this.startPendingRetryTimer();
+            this.retryPendingMessages();
+            
+            if (!this.config.apiKey) {
+                log("Starting auto-register");
+                this.autoRegister().catch(e => log(`Auto-register failed: ${e}`));
+            }
+        }).catch(e => log(`Init failed: ${e}`));
     }
     
     private get apiBase(): string {
         return this.config.apiBaseUrl || DEFAULT_API_BASE;
     }
     
-    private loadConfig(): void {
-        const stored = JsonStorage.load();
+    private async loadConfig(): Promise<void> {
+        const stored = await SQLiteStorage.loadConfig();
         if (stored) {
             this.config = { 
                 ...this.config, 
@@ -240,8 +367,8 @@ class MemoryXPlugin {
         }
     }
     
-    private saveConfig(): void {
-        JsonStorage.save(this.config);
+    private async saveConfig(): Promise<void> {
+        await SQLiteStorage.saveConfig(this.config);
     }
     
     private async autoRegister(): Promise<void> {
@@ -268,7 +395,7 @@ class MemoryXPlugin {
             this.config.apiKey = data.api_key;
             this.config.projectId = String(data.project_id);
             this.config.userId = data.agent_id;
-            this.saveConfig();
+            await this.saveConfig();
             
             log("Auto-registered successfully");
         } catch (e) {
@@ -297,8 +424,72 @@ class MemoryXPlugin {
         }, this.FLUSH_CHECK_INTERVAL);
     }
     
+    private startPendingRetryTimer(): void {
+        this.pendingRetryTimer = setInterval(() => {
+            this.retryPendingMessages();
+        }, this.PENDING_RETRY_INTERVAL);
+    }
+    
+    private async retryPendingMessages(): Promise<void> {
+        if (!this.config.apiKey) return;
+        
+        try {
+            const pending = await SQLiteStorage.getPendingMessages(50);
+            if (pending.length === 0) return;
+            
+            log(`Retrying ${pending.length} pending messages`);
+            
+            for (const msg of pending) {
+                if (msg.retry_count >= this.MAX_RETRY_COUNT) {
+                    log(`Deleting message ${msg.id}: max retries exceeded`);
+                    await SQLiteStorage.deletePendingMessage(msg.id);
+                    continue;
+                }
+                
+                try {
+                    const response = await fetch(`${this.apiBase}/v1/conversations/flush`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-API-Key": this.config.apiKey
+                        },
+                        body: JSON.stringify({
+                            conversation_id: msg.conversation_id,
+                            messages: [{
+                                role: msg.role,
+                                content: msg.content,
+                                timestamp: msg.timestamp,
+                                tokens: 0
+                            }]
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        await SQLiteStorage.deletePendingMessage(msg.id);
+                        log(`Sent pending message ${msg.id}`);
+                    } else {
+                        await SQLiteStorage.incrementRetryCount(msg.id);
+                        log(`Failed to send pending message ${msg.id}: ${response.status}`);
+                    }
+                } catch (e) {
+                    await SQLiteStorage.incrementRetryCount(msg.id);
+                    log(`Error sending pending message ${msg.id}: ${e}`);
+                }
+            }
+        } catch (e) {
+            log(`Retry pending messages failed: ${e}`);
+        }
+    }
+    
     private async flushConversation(): Promise<void> {
         if (!this.config.apiKey) {
+            const data = this.buffer.forceFlush();
+            if (data) {
+                for (const msg of data.messages) {
+                    await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
+                }
+                log(`Cached ${data.messages.length} messages (no API key)`);
+            }
             return;
         }
         
@@ -325,12 +516,22 @@ class MemoryXPlugin {
                 } else {
                     log(`Flush failed: ${JSON.stringify(errorData)}`);
                 }
+                
+                for (const msg of data.messages) {
+                    await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
+                }
+                log(`Cached ${data.messages.length} messages (API error)`);
             } else {
                 const result: any = await response.json();
                 log(`Flushed ${data.messages.length} messages, extracted ${result.extracted_count} memories`);
             }
         } catch (e) {
             log(`Flush error: ${e}`);
+            
+            for (const msg of data.messages) {
+                await SQLiteStorage.addPendingMessage(data.conversation_id, msg.role, msg.content);
+            }
+            log(`Cached ${data.messages.length} messages (network error)`);
         }
     }
     
@@ -351,6 +552,8 @@ class MemoryXPlugin {
                 return false;
             }
         }
+        
+        await SQLiteStorage.addTempMessage(this.buffer.getConversationId(), role, content);
         
         const shouldFlush = this.buffer.addMessage(role, content);
         
@@ -417,6 +620,7 @@ class MemoryXPlugin {
     
     public async endConversation(): Promise<void> {
         await this.flushConversation();
+        await SQLiteStorage.clearTempMessages(this.buffer.getConversationId());
         log("Conversation ended, buffer flushed");
     }
     
