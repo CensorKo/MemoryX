@@ -999,6 +999,43 @@ class GraphMemoryService:
             logger.error(f"Failed to delete from Qdrant: {e}")
             return False
     
+    def delete_memory_complete(self, user_id: str, vector_id: str) -> Dict[str, bool]:
+        results = {
+            "qdrant": False,
+            "postgres": False,
+            "neo4j": False
+        }
+        
+        entities = []
+        relations = []
+        
+        db = SessionLocal()
+        try:
+            fact = db.query(Fact).filter(Fact.vector_id == vector_id, Fact.user_id == int(user_id)).first()
+            if fact:
+                entities = fact.entities or []
+                relations = fact.relations or []
+                db.delete(fact)
+                db.commit()
+                results["postgres"] = True
+                logger.info(f"Deleted fact from PostgreSQL: {vector_id}")
+            else:
+                logger.warning(f"Fact not found in PostgreSQL: {vector_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete from PostgreSQL: {e}")
+            db.rollback()
+        finally:
+            db.close()
+        
+        if entities or relations:
+            self.delete_from_neo4j(user_id, entities, relations)
+            results["neo4j"] = True
+            logger.info(f"Deleted from Neo4j: {len(entities)} entities, {len(relations)} relations")
+        
+        results["qdrant"] = self.delete_from_qdrant(user_id, vector_id)
+        
+        return results
+    
     async def execute_memory_operations(self, user_id: str, memory_operations: List[Dict], existing_memories: List[Dict], metadata: Dict = None) -> Dict[str, Any]:
         import uuid
         

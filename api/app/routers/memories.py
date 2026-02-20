@@ -315,18 +315,19 @@ async def delete_memory(
     user_id, tier, quota, api_key = user_data
     
     try:
-        success = graph_memory_service.delete_from_qdrant(str(user_id), memory_id)
+        results = graph_memory_service.delete_memory_complete(str(user_id), memory_id)
         
-        if success:
+        if any(results.values()):
             return {
                 "success": True,
                 "message": "Memory deleted successfully",
-                "memory_id": memory_id
+                "memory_id": memory_id,
+                "deleted_from": results
             }
         else:
             raise HTTPException(
                 status_code=404,
-                detail="Memory not found or deletion failed"
+                detail="Memory not found in any database"
             )
     except HTTPException:
         raise
