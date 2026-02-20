@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test files
+test_*.py
+test_*.sh
+*_test.py
+
+# ONNX models (download from CDN)
+# INT8 Model (122MB): https://static.t0ken.ai/models/model_int8.onnx
+# FP32 Model (489MB): https://static.t0ken.ai/models/model.onnx
+*.onnx
+
+# Node modules
+node_modules/
+
+# Package files
+*.tgz

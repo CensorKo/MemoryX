@@ -8,6 +8,10 @@
  * - Sensitive data filtered on server
  * - Configurable API base URL
  * - Precise token counting with tiktoken
+ * 
+ * Model Downloads (CDN):
+ * - INT8 Model (122MB, recommended): https://static.t0ken.ai/models/model_int8.onnx
+ * - FP32 Model (489MB): https://static.t0ken.ai/models/model.onnx
  */
 
 import { getEncoding, Tiktoken } from "js-tiktoken";
