@@ -61,5 +61,8 @@ node_modules/
 # Build output
 dist/
 
+# Documentation (synced to t0ken-ai/docs repo)
+docs/
+
 # Nginx config (server-specific)
 nginx-hybrid.conf
