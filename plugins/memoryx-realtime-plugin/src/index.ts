@@ -251,22 +251,16 @@ class MemoryXPlugin {
         if (pluginConfig?.apiBaseUrl) {
             this.config.apiBaseUrl = pluginConfig.apiBaseUrl;
         }
-        this.init();
+        this.loadConfig();
+        this.startFlushTimer();
+        this.config.initialized = true;
+        if (!this.config.apiKey) {
+            this.autoRegister().catch(e => console.error("[MemoryX] Auto-register failed:", e));
+        }
     }
     
     private get apiBase(): string {
         return this.config.apiBaseUrl || DEFAULT_API_BASE;
-    }
-    
-    private async init(): Promise<void> {
-        this.loadConfig();
-        
-        if (!this.config.apiKey) {
-            await this.autoRegister();
-        }
-        
-        this.startFlushTimer();
-        this.config.initialized = true;
     }
     
     private loadConfig(): void {
