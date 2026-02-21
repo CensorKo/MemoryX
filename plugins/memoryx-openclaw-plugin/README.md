@@ -4,10 +4,32 @@ Official MemoryX plugin for OpenClaw. Enables long-term memory for agents by rec
 
 ## Features
 
-- **Recall**: `before_agent_start` → semantic search for relevant memories
-- **Add**: `message_received` + `assistant_response` → buffer and flush to MemoryX API
+- **Auto Recall**: `before_agent_start` → semantic search for relevant memories
+- **Auto Capture**: `message_received` + `assistant_response` → buffer and flush to MemoryX API
+- **Function Calling**: LLM can actively search, list, and delete memories
 - **Auto Registration**: Agents auto-register with machine fingerprint
 - **Conversation Buffer**: Smart buffering with token counting and round-based flushing
+
+## Function Calling Tools
+
+The plugin registers three tools that LLM can call during conversations:
+
+| Tool | Description | When to Use |
+|------|-------------|-------------|
+| `memoryx_recall` | Search through long-term memories | User asks "do you remember X?" or needs context |
+| `memoryx_list` | List all stored memories | User asks "what do you remember about me?" |
+| `memoryx_forget` | Delete a specific memory | User asks to forget/remove something |
+
+### Example Usage
+
+**User**: "What do you remember about my preferences?"
+**LLM**: *calls `memoryx_list`* → Returns list of stored memories
+
+**User**: "Did I ever mention my favorite color?"
+**LLM**: *calls `memoryx_recall` with query="favorite color"* → Searches and returns relevant memories
+
+**User**: "Please forget about my old address"
+**LLM**: *calls `memoryx_forget` with memory_id* → Deletes the memory
 
 ## Install
 
