@@ -48,6 +48,20 @@ openclaw plugins install @t0ken.ai/memoryx-openclaw-plugin
 openclaw gateway restart
 ```
 
+## Update
+
+```bash
+openclaw plugins update @t0ken.ai/memoryx-openclaw-plugin
+openclaw gateway restart
+```
+
+Or update all plugins:
+
+```bash
+openclaw plugins update --all
+openclaw gateway restart
+```
+
 ## Configuration
 
 Edit `~/.openclaw/openclaw.json`:
