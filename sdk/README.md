@@ -1,90 +1,119 @@
 # MemoryX Python SDK
 
-让 AI Agents 轻松拥有持久记忆
+Give your AI agents long-term memory.
 
-## 快速开始
-
-```python
-from memoryx import connect_memory
-
-# 自动注册并连接
-memory = connect_memory()
-
-# 存储记忆
-memory.add("用户喜欢深色模式")
-
-# 搜索记忆
-results = memory.search("用户偏好")
-```
-
-## 功能特性
-
-- 🔧 **自动注册** - Agent 自动注册，无需手动配置
-- 💾 **永久存储** - 记忆永久保存到向量数据库
-- 🔍 **智能搜索** - 基于语义的相似度搜索
-- 🏷️ **认知分类** - 自动分类为情景/语义/程序/情感/反思记忆
-- 🔒 **AES-256 加密** - 您的原始记忆内容使用 AES-256-GCM 加密存储
-- 🌐 **开源可审计** - 100% 开源代码，接受社区审计，确保没有后门
-- 🛡️ **隐私安全** - 机器隔离，验证码认领机制
-
-## 完整示例
-
-```python
-from memoryx import connect_memory
-
-# 连接记忆系统
-memory = connect_memory()
-
-# 存储不同类型的记忆
-memory.add(
-    content="用户是Python开发者",
-    category="semantic"  # 语义记忆
-)
-
-memory.add(
-    content="用户昨天去了北京",
-    category="episodic"  # 情景记忆
-)
-
-# 列出所有记忆
-memories = memory.list(limit=10)
-
-# 搜索相关记忆
-results = memory.search("用户职业")
-for item in results["data"]["data"]:
-    print(f"- {item['content']}")
-
-# 删除记忆
-memory.delete("memory_id_here")
-
-# 获取认领验证码
-code = memory.get_claim_code()
-print(f"认领验证码: {code}")
-```
-
-## 安装
+## Installation
 
 ```bash
-pip install memoryx
+pip install t0ken-memoryx
 ```
 
-## 认领机器
+## Quick Start
 
-Agent 注册后，访问 [t0ken.ai/agent-register](https://t0ken.ai/agent-register) 输入验证码认领这台机器。
+```python
+from memoryx import connect_memory
 
-## 安全与开源
+# Connect (auto-registers on first use)
+memory = connect_memory()
 
-**🔒 AES-256 加密存储**
-- 您的原始记忆内容使用 AES-256-GCM 加密存储
-- 每个用户拥有独立的加密密钥
-- 服务端永不触碰明文，保障数据安全
+# Store a memory
+memory.add("User prefers dark mode")
 
-**🌐 100% 开源可审计**
-- 完整的开源代码：[github.com/t0ken-ai/MemoryX](https://github.com/t0ken-ai/MemoryX)
-- 接受社区审计，确保没有后门
-- 您可以查看、验证甚至改进我们的加密实现
-- 许可证：MIT
+# Search memories
+results = memory.search("user preferences")
+for m in results["data"]:
+    print(m["content"])
 
-## 文档
+# List all memories
+memories = memory.list(limit=10)
 
-详细文档请访问: https://docs.t0ken.ai
+# Delete a memory
+memory.delete("memory_id")
+```
+
+## API Reference
+
+### `connect_memory(base_url=None, verbose=True)`
+
+Quick connect to MemoryX. Auto-registers if first time.
+
+```python
+from memoryx import connect_memory
+
+memory = connect_memory()
+```
+
+For self-hosted:
+
+```python
+memory = connect_memory(base_url="http://localhost:8000/api")
+```
+
+### `memory.add(content, project_id="default", metadata=None)`
+
+Store a memory. Returns `{"success": True, "task_id": "..."}`.
+
+```python
+memory.add("User works at Google")
+memory.add("User birthday is Jan 15", project_id="personal")
+```
+
+### `memory.search(query, project_id=None, limit=10)`
+
+Search memories by semantic similarity.
+
+```python
+results = memory.search("user job")
+for m in results["data"]:
+    print(f"- {m['memory']} (score: {m['score']})")
+```
+
+### `memory.list(project_id=None, limit=50, offset=0)`
+
+List all memories with pagination. Uses `GET /v1/memories/list`.
+
+```python
+memories = memory.list(limit=20, offset=0)
+print(f"Total: {memories['total']}")
+for m in memories["data"]:
+    print(f"- {m['id']}: {m['content']}")
+```
+
+### `memory.delete(memory_id)`
+
+Delete a memory by ID.
+
+```python
+memory.delete("abc123")
+```
+
+### `memory.get_task_status(task_id)`
+
+Check async task status (from `add()`).
+
+```python
+status = memory.get_task_status("task_id_here")
+print(status["status"])  # PENDING, SUCCESS, FAILURE
+```
+
+### `memory.get_quota()`
+
+Get quota information.
+
+```python
+quota = memory.get_quota()
+print(f"Tier: {quota['quota']['tier']}")
+print(f"Memories used: {quota['quota']['memories']['used']}")
+```
+
+## Self-Hosted
+
+```python
+from memoryx import connect_memory
+
+memory = connect_memory(base_url="http://your-server:8000/api")
+```
+
+## License
+
+MIT

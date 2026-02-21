@@ -222,6 +222,49 @@ async def get_task_status(
     return response
 
 
+@router.get("/memories/list", response_model=dict)
+async def list_memories(
+    limit: int = 50,
+    offset: int = 0,
+    user_data: tuple = Depends(get_current_user_with_quota),
+    db: Session = Depends(get_db)
+):
+    """
+    列出用户的所有记忆
+    
+    Args:
+        limit: 返回数量限制（默认 50）
+        offset: 分页偏移（默认 0）
+    """
+    from app.core.database import Fact
+    
+    user_id, tier, quota, api_key = user_data
+    
+    query = db.query(Fact).filter(Fact.user_id == user_id)
+    
+    total = query.count()
+    facts = query.order_by(Fact.created_at.desc()).offset(offset).limit(limit).all()
+    
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": fact.vector_id,
+                "content": fact.content,
+                "category": fact.category,
+                "importance": fact.importance,
+                "entities": fact.entities or [],
+                "relations": fact.relations or [],
+                "created_at": fact.created_at.isoformat() if fact.created_at else None
+            }
+            for fact in facts
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
 @router.post("/memories/search", response_model=dict)
 async def search_memories(
     query: SearchQuery,
